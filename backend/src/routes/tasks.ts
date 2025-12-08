@@ -16,6 +16,7 @@ const createTaskSchema = z.object({
   projectId: z.string().uuid('无效的项目ID'),
   requirementId: z.string().uuid('无效的需求ID').optional(),
   assigneeId: z.string().uuid('无效的负责人ID').optional(),
+  assigneeIds: z.array(z.string().uuid('无效的负责人ID')).optional(), // 多个负责人
   parentId: z.string().uuid('无效的父任务ID').optional(),
   estimatedHours: z.number().positive('预估工时必须为正数').optional(),
   actualHours: z.number().nonnegative('实际工时不能为负数').optional(),
@@ -30,6 +31,7 @@ const updateTaskSchema = z.object({
   priority: z.enum(['LOW', 'MEDIUM', 'HIGH', 'URGENT']).optional(),
   status: z.enum(['TODO', 'IN_PROGRESS', 'TESTING', 'DONE', 'BLOCKED']).optional(),
   assigneeId: z.string().uuid('无效的负责人ID').nullable().optional(),
+  assigneeIds: z.array(z.string().uuid('无效的负责人ID')).optional(), // 多个负责人
   parentId: z.string().uuid('无效的父任务ID').nullable().optional(),
   estimatedHours: z.number().positive('预估工时必须为正数').nullable().optional(),
   actualHours: z.number().nonnegative('实际工时不能为负数').nullable().optional(),
@@ -102,6 +104,17 @@ router.get('/', async (req: AuthRequest, res) => {
             id: true,
             username: true,
             name: true,
+          },
+        },
+        assignees: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                username: true,
+                name: true,
+              },
+            },
           },
         },
         _count: {
@@ -249,7 +262,7 @@ router.get('/:id', async (req: AuthRequest, res) => {
 // 创建任务
 router.post('/', async (req: AuthRequest, res) => {
   try {
-    const { startDate, dueDate, ...rest } = createTaskSchema.parse(req.body);
+    const { startDate, dueDate, assigneeIds, ...rest } = createTaskSchema.parse(req.body);
 
     // 检查项目是否存在
     const project = await prisma.project.findUnique({
@@ -270,6 +283,11 @@ router.post('/', async (req: AuthRequest, res) => {
         ...rest,
         startDate: startDate ? new Date(startDate) : null,
         dueDate: dueDate ? new Date(dueDate) : null,
+        assignees: assigneeIds && assigneeIds.length > 0 ? {
+          create: assigneeIds.map(userId => ({
+            userId,
+          })),
+        } : undefined,
       },
       include: {
         project: {
@@ -291,6 +309,17 @@ router.post('/', async (req: AuthRequest, res) => {
             name: true,
           },
         },
+        assignees: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                username: true,
+                name: true,
+              },
+            },
+          },
+        },
       },
     });
 
@@ -308,7 +337,7 @@ router.post('/', async (req: AuthRequest, res) => {
 router.put('/:id', async (req: AuthRequest, res) => {
   try {
     const { id } = req.params;
-    const { startDate, dueDate, ...rest } = updateTaskSchema.parse(req.body);
+    const { startDate, dueDate, assigneeIds, ...rest } = updateTaskSchema.parse(req.body);
 
     const existingTask = await prisma.task.findUnique({
       where: { id },
@@ -332,7 +361,7 @@ router.put('/:id', async (req: AuthRequest, res) => {
 
     // 普通负责人不能修改负责人
     if (isAssignee && !isAdmin && !isProjectOwner) {
-      if ('assigneeId' in rest) {
+      if ('assigneeId' in rest || assigneeIds) {
         return res.status(403).json({ error: '您不能修改任务负责人' });
       }
     }
@@ -340,6 +369,16 @@ router.put('/:id', async (req: AuthRequest, res) => {
     const updateData: any = { ...rest };
     if (startDate !== undefined) updateData.startDate = startDate ? new Date(startDate) : null;
     if (dueDate !== undefined) updateData.dueDate = dueDate ? new Date(dueDate) : null;
+
+    // 如果有 assigneeIds，更新多对多关系
+    if (assigneeIds !== undefined) {
+      updateData.assignees = {
+        deleteMany: {}, // 先删除所有现有关系
+        create: assigneeIds.map(userId => ({
+          userId,
+        })),
+      };
+    }
 
     const task = await prisma.task.update({
       where: { id },
@@ -362,6 +401,17 @@ router.put('/:id', async (req: AuthRequest, res) => {
             id: true,
             username: true,
             name: true,
+          },
+        },
+        assignees: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                username: true,
+                name: true,
+              },
+            },
           },
         },
       },
