@@ -1,6 +1,12 @@
 FROM node:18-alpine as builder
 
+# 配置 Alpine 国内镜像源（阿里云）
+RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories
+
 WORKDIR /app
+
+# 配置 npm 国内镜像源
+RUN npm config set registry https://registry.npmmirror.com
 
 COPY package*.json ./
 RUN npm install

@@ -1,6 +1,15 @@
 FROM node:18-alpine
 
+# 配置 Alpine 国内镜像源（阿里云）
+RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories
+
+# 安装必要的构建工具和 OpenSSL（Prisma 需要）
+RUN apk add --no-cache python3 make g++ openssl openssl-dev
+
 WORKDIR /app
+
+# 配置 npm 国内镜像源
+RUN npm config set registry https://registry.npmmirror.com
 
 # 复制 package.json
 COPY package*.json ./
