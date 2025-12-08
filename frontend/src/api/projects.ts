@@ -28,3 +28,7 @@ export const updateProject = (id: string, data: Partial<Project>) => {
 export const deleteProject = (id: string) => {
   return request.delete(`/projects/${id}`)
 }
+
+export const reorderProjects = (projectIds: string[]) => {
+  return request.post('/projects/reorder', { projectIds })
+}

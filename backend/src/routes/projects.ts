@@ -68,7 +68,7 @@ router.get('/', async (req: AuthRequest, res) => {
           },
         },
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { sortOrder: 'asc' },
     });
 
     res.json(projects);
@@ -236,6 +236,32 @@ router.delete('/:id', async (req: AuthRequest, res) => {
     res.json({ message: '项目删除成功' });
   } catch (error) {
     res.status(500).json({ error: '删除项目失败' });
+  }
+});
+
+// 批量更新项目排序
+router.post('/reorder', async (req: AuthRequest, res) => {
+  try {
+    const { projectIds } = req.body;
+
+    if (!Array.isArray(projectIds)) {
+      return res.status(400).json({ error: '无效的项目ID列表' });
+    }
+
+    // 批量更新排序
+    const updates = projectIds.map((id, index) =>
+      prisma.project.update({
+        where: { id },
+        data: { sortOrder: index + 1 },
+      })
+    );
+
+    await prisma.$transaction(updates);
+
+    res.json({ message: '项目排序更新成功' });
+  } catch (error) {
+    console.error('更新项目排序错误:', error);
+    res.status(500).json({ error: '更新项目排序失败' });
   }
 });
 

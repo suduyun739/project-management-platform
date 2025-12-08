@@ -18,6 +18,7 @@ export interface Project {
   creator?: User
   startDate?: string
   endDate?: string
+  sortOrder: number
   createdAt: string
   updatedAt: string
   _count?: {
@@ -36,6 +37,8 @@ export interface Requirement {
   project?: { id: string; name: string }
   assigneeId?: string
   assignee?: User
+  assignees?: User[] // 多个负责人
+  assigneeIds?: string[] // 用于表单提交
   parentId?: string
   parent?: Requirement
   children?: Requirement[]
@@ -61,6 +64,8 @@ export interface Task {
   requirement?: { id: string; title: string }
   assigneeId?: string
   assignee?: User
+  assignees?: User[] // 多个负责人
+  assigneeIds?: string[] // 用于表单提交
   parentId?: string
   parent?: Task
   children?: Task[]
