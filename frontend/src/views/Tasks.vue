@@ -266,6 +266,10 @@ const handleSubmit = async () => {
       const data = { ...form }
       if (!data.assigneeId) delete data.assigneeId
       if (!data.requirementId) delete data.requirementId
+      if (!data.startDate) delete data.startDate
+      if (!data.dueDate) delete data.dueDate
+      if (data.estimatedHours === 0) delete data.estimatedHours
+      if (data.actualHours === 0) delete data.actualHours
       if (isEdit.value) {
         await updateTask(form.id, data)
         ElMessage.success('任务更新成功')

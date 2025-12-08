@@ -22,10 +22,12 @@ model User {
   updatedAt DateTime @updatedAt
 
   // 关联关系
-  createdProjects Project[]      @relation("ProjectCreator")
-  requirements    Requirement[]  @relation("RequirementAssignee")
-  tasks           Task[]         @relation("TaskAssignee")
-  comments        Comment[]
+  createdProjects       Project[]             @relation("ProjectCreator")
+  requirements          Requirement[]         @relation("RequirementAssignee")
+  tasks                 Task[]                @relation("TaskAssignee")
+  comments              Comment[]
+  requirementAssignees  RequirementAssignee[] @relation("RequirementAssignees")
+  taskAssignees         TaskAssignee[]        @relation("TaskAssignees")
 
   @@map("users")
 }
@@ -45,6 +47,7 @@ model Project {
   creatorId   String
   startDate   DateTime?
   endDate     DateTime?
+  sortOrder   Int           @default(autoincrement())
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
 
@@ -71,19 +74,20 @@ model Requirement {
   priority    Priority           @default(MEDIUM)
   status      RequirementStatus  @default(PENDING)
   projectId   String
-  assigneeId  String?
+  assigneeId  String?            // 保留以兼容旧数据，但新数据使用 assignees 关系
   parentId    String?            // 父需求ID，用于支持子需求
   estimatedHours Float?
   createdAt   DateTime           @default(now())
   updatedAt   DateTime           @updatedAt
 
   // 关联关系
-  project  Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  assignee User?     @relation("RequirementAssignee", fields: [assigneeId], references: [id])
-  parent   Requirement? @relation("RequirementHierarchy", fields: [parentId], references: [id], onDelete: Cascade)
-  children Requirement[] @relation("RequirementHierarchy")
-  tasks    Task[]
-  comments Comment[]
+  project   Project                @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  assignee  User?                  @relation("RequirementAssignee", fields: [assigneeId], references: [id])
+  parent    Requirement?           @relation("RequirementHierarchy", fields: [parentId], references: [id], onDelete: Cascade)
+  children  Requirement[]          @relation("RequirementHierarchy")
+  tasks     Task[]
+  comments  Comment[]
+  assignees RequirementAssignee[]  // 多个负责人
 
   @@map("requirements")
 }
@@ -105,7 +109,7 @@ model Task {
   status        TaskStatus  @default(TODO)
   projectId     String
   requirementId String?
-  assigneeId    String?
+  assigneeId    String?     // 保留以兼容旧数据，但新数据使用 assignees 关系
   parentId      String?     // 父任务ID，用于支持子任务
   estimatedHours Float?
   actualHours   Float?
@@ -115,12 +119,13 @@ model Task {
   updatedAt     DateTime    @updatedAt
 
   // 关联关系
-  project     Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  requirement Requirement? @relation(fields: [requirementId], references: [id], onDelete: SetNull)
-  assignee    User?        @relation("TaskAssignee", fields: [assigneeId], references: [id])
-  parent      Task?        @relation("TaskHierarchy", fields: [parentId], references: [id], onDelete: Cascade)
-  children    Task[]       @relation("TaskHierarchy")
+  project     Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  requirement Requirement?  @relation(fields: [requirementId], references: [id], onDelete: SetNull)
+  assignee    User?         @relation("TaskAssignee", fields: [assigneeId], references: [id])
+  parent      Task?         @relation("TaskHierarchy", fields: [parentId], references: [id], onDelete: Cascade)
+  children    Task[]        @relation("TaskHierarchy")
   comments    Comment[]
+  assignees   TaskAssignee[] // 多个负责人
 
   @@map("tasks")
 }
@@ -158,4 +163,30 @@ model Comment {
   task        Task?        @relation(fields: [taskId], references: [id], onDelete: Cascade)
 
   @@map("comments")
+}
+
+// 需求-负责人关联表（多对多）
+model RequirementAssignee {
+  requirementId String
+  userId        String
+  assignedAt    DateTime @default(now())
+
+  requirement Requirement @relation(fields: [requirementId], references: [id], onDelete: Cascade)
+  user        User        @relation("RequirementAssignees", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([requirementId, userId])
+  @@map("requirement_assignees")
+}
+
+// 任务-负责人关联表（多对多）
+model TaskAssignee {
+  taskId     String
+  userId     String
+  assignedAt DateTime @default(now())
+
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user User @relation("TaskAssignees", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([taskId, userId])
+  @@map("task_assignees")
 }

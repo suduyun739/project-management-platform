@@ -13,8 +13,7 @@
 
       <el-table :data="users" v-loading="loading">
         <el-table-column prop="username" label="用户名" width="150" />
-        <el-table-column prop="name" label="姓名" width="150" />
-        <el-table-column prop="email" label="邮箱" min-width="200" />
+        <el-table-column prop="name" label="姓名" width="200" />
         <el-table-column label="角色" width="100">
           <template #default="{ row }">
             <el-tag :type="row.role === 'ADMIN' ? 'danger' : 'info'">
@@ -70,9 +69,6 @@
         <el-form-item label="姓名" prop="name">
           <el-input v-model="form.name" />
         </el-form-item>
-        <el-form-item label="邮箱">
-          <el-input v-model="form.email" />
-        </el-form-item>
         <el-form-item label="角色" prop="role">
           <el-select v-model="form.role" style="width: 100%">
             <el-option label="管理员" value="ADMIN" />
@@ -109,7 +105,6 @@ const form = reactive<any>({
   username: '',
   password: '',
   name: '',
-  email: '',
   role: 'MEMBER'
 })
 
@@ -142,7 +137,6 @@ const showCreateDialog = () => {
     username: '',
     password: '',
     name: '',
-    email: '',
     role: 'MEMBER'
   })
   dialogVisible.value = true
@@ -153,7 +147,6 @@ const handleEdit = (row: User) => {
   Object.assign(form, {
     id: row.id,
     name: row.name,
-    email: row.email,
     role: row.role
   })
   dialogVisible.value = true
@@ -169,7 +162,6 @@ const handleSubmit = async () => {
       if (isEdit.value) {
         await updateUser(form.id, {
           name: form.name,
-          email: form.email,
           role: form.role
         })
         ElMessage.success('用户更新成功')
@@ -177,8 +169,7 @@ const handleSubmit = async () => {
         await register({
           username: form.username,
           password: form.password,
-          name: form.name,
-          email: form.email
+          name: form.name
         })
         ElMessage.success('用户创建成功')
       }
