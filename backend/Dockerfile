@@ -20,11 +20,11 @@ COPY . .
 # 构建
 RUN npm run build
 
-# 删除 devDependencies，减小镜像体积
-RUN npm prune --production
+# 删除 devDependencies 但保留 prisma 和 tsx
+RUN npm prune --production && npm install prisma tsx
 
 # 暴露端口
 EXPOSE 3000
 
 # 启动脚本
-CMD ["sh", "-c", "npx prisma migrate deploy && npx prisma db seed && npm start"]
+CMD ["sh", "-c", "npx prisma migrate deploy && (npm run prisma:seed || echo 'Seed skipped') && npm start"]

@@ -2,7 +2,15 @@
   "permissions": {
     "allow": [
       "Bash(git init:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$(cat <<''EOF''\nInitial commit: 项目管理平台\n\n功能特性:\n- 用户认证和权限管理（管理员/普通成员）\n- 项目管理\n- 需求管理（含强大筛选）\n- 任务管理（含强大筛选）\n- 看板视图\n- 数据权限隔离\n- Docker Compose 一键部署\n\n技术栈:\n- 前端: Vue 3 + Element Plus + Pinia\n- 后端: Node.js + Express + Prisma\n- 数据库: PostgreSQL\n- 部署: Docker Compose\n\n🤖 Generated with Claude Code\nEOF\n)\")",
+      "Bash(git commit:*)",
+      "Bash(git remote add:*)",
+      "Bash(git push:*)",
+      "Bash(dir:*)",
+      "Bash(cat:*)",
+      "Bash(npx prisma migrate dev:*)",
+      "Bash(npx prisma@5.7.0 migrate dev --name init --create-only)"
     ],
     "deny": [],
     "ask": []

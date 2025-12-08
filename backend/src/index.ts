@@ -6,6 +6,7 @@ import projectRoutes from './routes/projects';
 import requirementRoutes from './routes/requirements';
 import taskRoutes from './routes/tasks';
 import userRoutes from './routes/users';
+import commentRoutes from './routes/comments';
 import { errorHandler } from './middleware/errorHandler';
 
 dotenv.config();
@@ -28,6 +29,7 @@ app.use('/api/projects', projectRoutes);
 app.use('/api/requirements', requirementRoutes);
 app.use('/api/tasks', taskRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/comments', commentRoutes);
 
 // 错误处理
 app.use(errorHandler);
