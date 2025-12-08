@@ -48,29 +48,61 @@
 
       <!-- 项目列表 -->
       <el-table :data="projects" v-loading="loading" style="margin-top: 20px">
-        <el-table-column prop="name" label="项目名称" min-width="200" />
-        <el-table-column prop="description" label="描述" min-width="250" show-overflow-tooltip />
-        <el-table-column prop="status" label="状态" width="100">
+        <el-table-column prop="name" label="项目名称" min-width="180" />
+        <el-table-column prop="description" label="描述" min-width="200" show-overflow-tooltip />
+
+        <!-- 状态 - 行内编辑 -->
+        <el-table-column label="状态" width="120">
           <template #default="{ row }">
-            <el-tag :type="getStatusType(row.status)">
-              {{ getStatusText(row.status) }}
-            </el-tag>
+            <el-select
+              v-model="row.status"
+              @change="handleStatusChange(row)"
+              size="small"
+            >
+              <el-option label="进行中" value="ACTIVE" />
+              <el-option label="已完成" value="COMPLETED" />
+              <el-option label="已归档" value="ARCHIVED" />
+            </el-select>
           </template>
         </el-table-column>
+
+        <!-- 开始日期 - 行内编辑 -->
+        <el-table-column label="开始日期" width="160">
+          <template #default="{ row }">
+            <el-date-picker
+              v-model="row.startDate"
+              type="date"
+              size="small"
+              placeholder="选择日期"
+              @change="handleDateChange(row, 'startDate')"
+              value-format="YYYY-MM-DD"
+            />
+          </template>
+        </el-table-column>
+
+        <!-- 结束日期 - 行内编辑 -->
+        <el-table-column label="结束日期" width="160">
+          <template #default="{ row }">
+            <el-date-picker
+              v-model="row.endDate"
+              type="date"
+              size="small"
+              placeholder="选择日期"
+              @change="handleDateChange(row, 'endDate')"
+              value-format="YYYY-MM-DD"
+            />
+          </template>
+        </el-table-column>
+
         <el-table-column label="统计" width="150">
           <template #default="{ row }">
-            <el-space>
-              <el-text>需求: {{ row._count?.requirements || 0 }}</el-text>
-              <el-text>任务: {{ row._count?.tasks || 0 }}</el-text>
+            <el-space direction="vertical" :size="2">
+              <el-text size="small">需求: {{ row._count?.requirements || 0 }}</el-text>
+              <el-text size="small">任务: {{ row._count?.tasks || 0 }}</el-text>
             </el-space>
           </template>
         </el-table-column>
-        <el-table-column prop="creator.name" label="创建人" width="120" />
-        <el-table-column prop="createdAt" label="创建时间" width="180">
-          <template #default="{ row }">
-            {{ formatDate(row.createdAt) }}
-          </template>
-        </el-table-column>
+        <el-table-column prop="creator.name" label="创建人" width="100" />
         <el-table-column label="操作" width="150" fixed="right">
           <template #default="{ row }">
             <el-button link type="primary" size="small" @click="handleEdit(row)">
@@ -251,6 +283,28 @@ const handleDelete = (row: Project) => {
     ElMessage.success('删除成功')
     fetchProjects()
   })
+}
+
+// 行内编辑 - 状态变更
+const handleStatusChange = async (row: Project) => {
+  try {
+    await updateProject(row.id, { status: row.status })
+    ElMessage.success('状态更新成功')
+  } catch (error) {
+    // 失败时恢复原值
+    fetchProjects()
+  }
+}
+
+// 行内编辑 - 日期变更
+const handleDateChange = async (row: Project, field: 'startDate' | 'endDate') => {
+  try {
+    await updateProject(row.id, { [field]: row[field] })
+    ElMessage.success('日期更新成功')
+  } catch (error) {
+    // 失败时恢复原值
+    fetchProjects()
+  }
 }
 
 const getStatusType = (status: string) => {
