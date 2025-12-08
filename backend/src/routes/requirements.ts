@@ -14,6 +14,7 @@ const createRequirementSchema = z.object({
   priority: z.enum(['LOW', 'MEDIUM', 'HIGH', 'URGENT']).default('MEDIUM'),
   projectId: z.string().uuid('无效的项目ID'),
   assigneeId: z.string().uuid('无效的负责人ID').optional(),
+  assigneeIds: z.array(z.string().uuid('无效的负责人ID')).optional(), // 多个负责人
   parentId: z.string().uuid('无效的父需求ID').optional(),
   estimatedHours: z.number().positive('预估工时必须为正数').optional(),
 });
@@ -25,6 +26,7 @@ const updateRequirementSchema = z.object({
   priority: z.enum(['LOW', 'MEDIUM', 'HIGH', 'URGENT']).optional(),
   status: z.enum(['PENDING', 'IN_PROGRESS', 'COMPLETED', 'REJECTED']).optional(),
   assigneeId: z.string().uuid('无效的负责人ID').nullable().optional(),
+  assigneeIds: z.array(z.string().uuid('无效的负责人ID')).optional(), // 多个负责人
   parentId: z.string().uuid('无效的父需求ID').nullable().optional(),
   estimatedHours: z.number().positive('预估工时必须为正数').nullable().optional(),
 });
@@ -83,6 +85,17 @@ router.get('/', async (req: AuthRequest, res) => {
             id: true,
             username: true,
             name: true,
+          },
+        },
+        assignees: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                username: true,
+                name: true,
+              },
+            },
           },
         },
         _count: {
@@ -173,7 +186,7 @@ router.get('/:id', async (req: AuthRequest, res) => {
 // 创建需求
 router.post('/', async (req: AuthRequest, res) => {
   try {
-    const data = createRequirementSchema.parse(req.body);
+    const { assigneeIds, ...data } = createRequirementSchema.parse(req.body);
 
     // 检查项目是否存在
     const project = await prisma.project.findUnique({
@@ -190,7 +203,14 @@ router.post('/', async (req: AuthRequest, res) => {
     }
 
     const requirement = await prisma.requirement.create({
-      data,
+      data: {
+        ...data,
+        assignees: assigneeIds && assigneeIds.length > 0 ? {
+          create: assigneeIds.map(userId => ({
+            userId,
+          })),
+        } : undefined,
+      },
       include: {
         project: {
           select: {
@@ -205,6 +225,17 @@ router.post('/', async (req: AuthRequest, res) => {
             name: true,
           },
         },
+        assignees: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                username: true,
+                name: true,
+              },
+            },
+          },
+        },
       },
     });
 
@@ -213,6 +244,7 @@ router.post('/', async (req: AuthRequest, res) => {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: error.errors[0].message });
     }
+    console.error('创建需求错误:', error);
     res.status(500).json({ error: '创建需求失败' });
   }
 });
@@ -221,7 +253,7 @@ router.post('/', async (req: AuthRequest, res) => {
 router.put('/:id', async (req: AuthRequest, res) => {
   try {
     const { id } = req.params;
-    const data = updateRequirementSchema.parse(req.body);
+    const { assigneeIds, ...data } = updateRequirementSchema.parse(req.body);
 
     const existingRequirement = await prisma.requirement.findUnique({
       where: { id },
@@ -245,14 +277,28 @@ router.put('/:id', async (req: AuthRequest, res) => {
 
     // 普通负责人只能更新状态
     if (isAssignee && !isAdmin && !isProjectOwner) {
-      if (Object.keys(data).some(key => key !== 'status')) {
+      const keys = Object.keys(data);
+      if (keys.some(key => key !== 'status') || assigneeIds) {
         return res.status(403).json({ error: '您只能更新需求状态' });
       }
     }
 
+    // 准备更新数据
+    const updateData: any = { ...data };
+
+    // 如果有 assigneeIds，更新多对多关系
+    if (assigneeIds !== undefined) {
+      updateData.assignees = {
+        deleteMany: {}, // 先删除所有现有关系
+        create: assigneeIds.map(userId => ({
+          userId,
+        })),
+      };
+    }
+
     const requirement = await prisma.requirement.update({
       where: { id },
-      data,
+      data: updateData,
       include: {
         project: {
           select: {
@@ -267,6 +313,17 @@ router.put('/:id', async (req: AuthRequest, res) => {
             name: true,
           },
         },
+        assignees: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                username: true,
+                name: true,
+              },
+            },
+          },
+        },
       },
     });
 
@@ -275,6 +332,7 @@ router.put('/:id', async (req: AuthRequest, res) => {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: error.errors[0].message });
     }
+    console.error('更新需求错误:', error);
     res.status(500).json({ error: '更新需求失败' });
   }
 });
