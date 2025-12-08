@@ -10,6 +10,11 @@
         router
         class="menu"
       >
+        <el-menu-item index="/dashboard">
+          <el-icon><DataAnalysis /></el-icon>
+          <span>数据看板</span>
+        </el-menu-item>
+
         <el-menu-item index="/projects">
           <el-icon><Folder /></el-icon>
           <span>项目</span>
@@ -27,7 +32,7 @@
 
         <el-menu-item index="/kanban">
           <el-icon><Grid /></el-icon>
-          <span>看板</span>
+          <span>任务看板</span>
         </el-menu-item>
 
         <el-menu-item v-if="authStore.isAdmin()" index="/users">
@@ -136,10 +141,11 @@ const activeMenu = computed(() => route.path)
 
 const breadcrumbs = computed(() => {
   const map: Record<string, string> = {
+    '/dashboard': '数据看板',
     '/projects': '项目',
     '/requirements': '需求',
     '/tasks': '任务',
-    '/kanban': '看板',
+    '/kanban': '任务看板',
     '/users': '用户管理'
   }
   return [map[route.path] || '首页']

@@ -1,15 +1,23 @@
 <template>
-  <div class="page-container">
-    <el-card>
-      <template #header>
-        <div class="card-header">
-          <span>项目管理</span>
-          <el-button type="primary" @click="showCreateDialog">
-            <el-icon><Plus /></el-icon>
-            新建项目
-          </el-button>
-        </div>
-      </template>
+  <div class="page-container with-sidebar">
+    <ProjectSidebar
+      :projects="projects"
+      :selected-project-id="selectedProjectId"
+      @select="handleSelectProject"
+      @create="showCreateDialog"
+    />
+
+    <div class="main-content">
+      <el-card>
+        <template #header>
+          <div class="card-header">
+            <span>{{ selectedProject ? selectedProject.name : '项目管理' }}</span>
+            <el-button type="primary" @click="showCreateDialog">
+              <el-icon><Plus /></el-icon>
+              新建项目
+            </el-button>
+          </div>
+        </template>
 
       <!-- 筛选 -->
       <div class="filter-bar">
@@ -74,7 +82,8 @@
           </template>
         </el-table-column>
       </el-table>
-    </el-card>
+      </el-card>
+    </div>
 
     <!-- 创建/编辑对话框 -->
     <el-dialog
@@ -91,7 +100,7 @@
         <el-form-item label="项目名称" prop="name">
           <el-input v-model="form.name" placeholder="请输入项目名称" />
         </el-form-item>
-        <el-form-item label="项目描述" prop="description">
+        <el-form-item label="项目描述">
           <el-input
             v-model="form.description"
             type="textarea"
@@ -106,7 +115,7 @@
             <el-option label="已归档" value="ARCHIVED" />
           </el-select>
         </el-form-item>
-        <el-form-item label="开始日期" prop="startDate">
+        <el-form-item label="开始日期">
           <el-date-picker
             v-model="form.startDate"
             type="date"
@@ -114,7 +123,7 @@
             style="width: 100%"
           />
         </el-form-item>
-        <el-form-item label="结束日期" prop="endDate">
+        <el-form-item label="结束日期">
           <el-date-picker
             v-model="form.endDate"
             type="date"
@@ -133,16 +142,22 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
 import { getProjects, createProject, updateProject, deleteProject } from '@/api/projects'
+import ProjectSidebar from '@/components/ProjectSidebar.vue'
 import type { Project } from '@/types'
 
 const loading = ref(false)
 const projects = ref<Project[]>([])
+const selectedProjectId = ref<string>()
 const dialogVisible = ref(false)
 const isEdit = ref(false)
 const formRef = ref<FormInstance>()
+
+const selectedProject = computed(() =>
+  projects.value.find(p => p.id === selectedProjectId.value)
+)
 
 const filters = reactive({
   search: '',
@@ -260,6 +275,11 @@ const formatDate = (date: string) => {
   return new Date(date).toLocaleString('zh-CN')
 }
 
+const handleSelectProject = (project: Project) => {
+  selectedProjectId.value = project.id
+  // 可以在这里添加更多的项目详情展示逻辑
+}
+
 onMounted(() => {
   fetchProjects()
 })
@@ -268,6 +288,21 @@ onMounted(() => {
 <style scoped>
 .page-container {
   height: 100%;
+}
+
+.page-container.with-sidebar {
+  display: flex;
+  gap: 0;
+}
+
+.page-container.with-sidebar :deep(.project-sidebar) {
+  width: 280px;
+  flex-shrink: 0;
+}
+
+.main-content {
+  flex: 1;
+  overflow: auto;
 }
 
 .card-header {

@@ -61,7 +61,7 @@
           </template>
         </el-table-column>
         <el-table-column prop="assignee.name" label="负责人" width="120" />
-        <el-table-column prop="estimatedHours" label="预估工时(h)" width="120" />
+        <el-table-column prop="estimatedHours" label="预估工时(天)" width="120" />
         <el-table-column label="操作" width="150" fixed="right">
           <template #default="{ row }">
             <el-button link type="primary" size="small" @click="handleEdit(row)">编辑</el-button>
@@ -77,7 +77,7 @@
         <el-form-item label="需求标题" prop="title">
           <el-input v-model="form.title" />
         </el-form-item>
-        <el-form-item label="需求描述" prop="description">
+        <el-form-item label="需求描述">
           <el-input v-model="form.description" type="textarea" :rows="3" />
         </el-form-item>
         <el-form-item label="所属项目" prop="projectId">
@@ -101,13 +101,13 @@
             <el-option label="已拒绝" value="REJECTED" />
           </el-select>
         </el-form-item>
-        <el-form-item label="负责人" prop="assigneeId">
+        <el-form-item label="负责人">
           <el-select v-model="form.assigneeId" style="width: 100%" clearable>
             <el-option v-for="u in userOptions" :key="u.id" :label="u.name" :value="u.id" />
           </el-select>
         </el-form-item>
-        <el-form-item label="预估工时" prop="estimatedHours">
-          <el-input-number v-model="form.estimatedHours" :min="0" :step="0.5" />
+        <el-form-item label="预估工时(天)">
+          <el-input-number v-model="form.estimatedHours" :min="0" :step="0.5" :precision="1" placeholder="输入天数，如0.5、1、1.5" />
         </el-form-item>
       </el-form>
 

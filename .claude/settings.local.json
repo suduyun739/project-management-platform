@@ -10,7 +10,10 @@
       "Bash(dir:*)",
       "Bash(cat:*)",
       "Bash(npx prisma migrate dev:*)",
-      "Bash(npx prisma@5.7.0 migrate dev --name init --create-only)"
+      "Bash(npx prisma@5.7.0 migrate dev --name init --create-only)",
+      "Bash(git rm:*)",
+      "Bash(docker-compose down:*)",
+      "Bash(docker compose:*)"
     ],
     "deny": [],
     "ask": []

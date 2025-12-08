@@ -62,11 +62,11 @@
           </template>
         </el-table-column>
         <el-table-column prop="assignee.name" label="负责人" width="120" />
-        <el-table-column label="工时" width="150">
+        <el-table-column label="工时(天)" width="150">
           <template #default="{ row }">
             <el-text size="small">
-              预估: {{ row.estimatedHours || 0 }}h
-              {{ row.actualHours ? ` / 实际: ${row.actualHours}h` : '' }}
+              预估: {{ row.estimatedHours || 0 }}天
+              {{ row.actualHours ? ` / 实际: ${row.actualHours}天` : '' }}
             </el-text>
           </template>
         </el-table-column>
@@ -90,7 +90,7 @@
         <el-form-item label="任务标题" prop="title">
           <el-input v-model="form.title" />
         </el-form-item>
-        <el-form-item label="任务描述" prop="description">
+        <el-form-item label="任务描述">
           <el-input v-model="form.description" type="textarea" :rows="3" />
         </el-form-item>
         <el-row :gutter="20">
@@ -132,20 +132,20 @@
             </el-form-item>
           </el-col>
         </el-row>
-        <el-form-item label="负责人" prop="assigneeId">
+        <el-form-item label="负责人">
           <el-select v-model="form.assigneeId" style="width: 100%" clearable>
             <el-option v-for="u in userOptions" :key="u.id" :label="u.name" :value="u.id" />
           </el-select>
         </el-form-item>
         <el-row :gutter="20">
           <el-col :span="12">
-            <el-form-item label="预估工时">
-              <el-input-number v-model="form.estimatedHours" :min="0" :step="0.5" style="width: 100%" />
+            <el-form-item label="预估工时(天)">
+              <el-input-number v-model="form.estimatedHours" :min="0" :step="0.5" :precision="1" placeholder="如0.5、1、1.5" style="width: 100%" />
             </el-form-item>
           </el-col>
           <el-col :span="12">
-            <el-form-item label="实际工时">
-              <el-input-number v-model="form.actualHours" :min="0" :step="0.5" style="width: 100%" />
+            <el-form-item label="实际工时(天)">
+              <el-input-number v-model="form.actualHours" :min="0" :step="0.5" :precision="1" placeholder="如0.5、1、1.5" style="width: 100%" />
             </el-form-item>
           </el-col>
         </el-row>

@@ -14,6 +14,7 @@ const createRequirementSchema = z.object({
   priority: z.enum(['LOW', 'MEDIUM', 'HIGH', 'URGENT']).default('MEDIUM'),
   projectId: z.string().uuid('无效的项目ID'),
   assigneeId: z.string().uuid('无效的负责人ID').optional(),
+  parentId: z.string().uuid('无效的父需求ID').optional(),
   estimatedHours: z.number().positive('预估工时必须为正数').optional(),
 });
 
@@ -24,6 +25,7 @@ const updateRequirementSchema = z.object({
   priority: z.enum(['LOW', 'MEDIUM', 'HIGH', 'URGENT']).optional(),
   status: z.enum(['PENDING', 'IN_PROGRESS', 'COMPLETED', 'REJECTED']).optional(),
   assigneeId: z.string().uuid('无效的负责人ID').nullable().optional(),
+  parentId: z.string().uuid('无效的父需求ID').nullable().optional(),
   estimatedHours: z.number().positive('预估工时必须为正数').nullable().optional(),
 });
 
@@ -87,6 +89,7 @@ router.get('/', async (req: AuthRequest, res) => {
           select: {
             tasks: true,
             comments: true,
+            children: true,
           },
         },
       },

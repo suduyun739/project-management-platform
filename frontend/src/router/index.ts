@@ -35,6 +35,11 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/Tasks.vue')
       },
       {
+        path: 'dashboard',
+        name: 'Dashboard',
+        component: () => import('@/views/Dashboard.vue')
+      },
+      {
         path: 'kanban',
         name: 'Kanban',
         component: () => import('@/views/Kanban.vue')

@@ -36,12 +36,16 @@ export interface Requirement {
   project?: { id: string; name: string }
   assigneeId?: string
   assignee?: User
+  parentId?: string
+  parent?: Requirement
+  children?: Requirement[]
   estimatedHours?: number
   createdAt: string
   updatedAt: string
   _count?: {
     tasks: number
     comments: number
+    children: number
   }
 }
 
@@ -57,6 +61,9 @@ export interface Task {
   requirement?: { id: string; title: string }
   assigneeId?: string
   assignee?: User
+  parentId?: string
+  parent?: Task
+  children?: Task[]
   estimatedHours?: number
   actualHours?: number
   startDate?: string
@@ -65,6 +72,7 @@ export interface Task {
   updatedAt: string
   _count?: {
     comments: number
+    children: number
   }
 }
 

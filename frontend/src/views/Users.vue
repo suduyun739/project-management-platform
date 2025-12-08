@@ -70,7 +70,7 @@
         <el-form-item label="姓名" prop="name">
           <el-input v-model="form.name" />
         </el-form-item>
-        <el-form-item label="邮箱" prop="email">
+        <el-form-item label="邮箱">
           <el-input v-model="form.email" />
         </el-form-item>
         <el-form-item label="角色" prop="role">

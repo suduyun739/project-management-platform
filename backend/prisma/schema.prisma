@@ -72,6 +72,7 @@ model Requirement {
   status      RequirementStatus  @default(PENDING)
   projectId   String
   assigneeId  String?
+  parentId    String?            // 父需求ID，用于支持子需求
   estimatedHours Float?
   createdAt   DateTime           @default(now())
   updatedAt   DateTime           @updatedAt
@@ -79,6 +80,8 @@ model Requirement {
   // 关联关系
   project  Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
   assignee User?     @relation("RequirementAssignee", fields: [assigneeId], references: [id])
+  parent   Requirement? @relation("RequirementHierarchy", fields: [parentId], references: [id], onDelete: Cascade)
+  children Requirement[] @relation("RequirementHierarchy")
   tasks    Task[]
   comments Comment[]
 
@@ -103,6 +106,7 @@ model Task {
   projectId     String
   requirementId String?
   assigneeId    String?
+  parentId      String?     // 父任务ID，用于支持子任务
   estimatedHours Float?
   actualHours   Float?
   startDate     DateTime?
@@ -114,6 +118,8 @@ model Task {
   project     Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
   requirement Requirement? @relation(fields: [requirementId], references: [id], onDelete: SetNull)
   assignee    User?        @relation("TaskAssignee", fields: [assigneeId], references: [id])
+  parent      Task?        @relation("TaskHierarchy", fields: [parentId], references: [id], onDelete: Cascade)
+  children    Task[]       @relation("TaskHierarchy")
   comments    Comment[]
 
   @@map("tasks")
