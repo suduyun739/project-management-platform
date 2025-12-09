@@ -89,26 +89,65 @@ cd /path/to/project
 git pull origin master
 ```
 
-2. **运行数据库迁移**
+2. **清理旧环境**
 ```bash
+# 停止所有容器
 docker compose down
+
+# 清理构建缓存（重要！避免使用过期的缓存层）
+docker builder prune -af
+
+# 清理悬空镜像
+docker image prune -af
+```
+
+3. **重新构建（推荐使用 --progress=plain 查看详细进度）**
+```bash
+# 使用详细输出模式构建，避免误以为卡住
+docker compose build --no-cache --progress=plain
+
+# 如果整体构建有问题，可以分步构建：
+# docker compose build --no-cache --progress=plain backend
+# docker compose build --no-cache --progress=plain frontend
+```
+
+4. **启动数据库并运行迁移**
+```bash
+# 先启动数据库
 docker compose up -d postgres
 
-# 等待数据库启动
-sleep 5
+# 等待数据库健康检查通过
+sleep 10
 
-# 运行迁移
+# 检查数据库是否ready
+docker compose exec postgres pg_isready -U pmuser -d project_management
+
+# 运行迁移（需要先启动backend容器）
+docker compose up -d backend
 docker compose exec backend npx prisma migrate deploy
 
 # 查看迁移状态
 docker compose exec backend npx prisma migrate status
 ```
 
-3. **重新构建并启动**
+5. **启动所有服务**
 ```bash
-docker compose build
 docker compose up -d
 ```
+
+6. **验证部署**
+```bash
+# 查看所有容器状态
+docker compose ps
+
+# 查看后端日志
+docker compose logs backend --tail=50
+
+# 查看前端日志
+docker compose logs frontend --tail=50
+```
+
+> **遇到构建问题？** 请查看 [DEPLOY_TROUBLESHOOTING.md](./DEPLOY_TROUBLESHOOTING.md) 获取详细的问题排查指南。
 
 4. **验证数据迁移**
 ```bash

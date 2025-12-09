@@ -5,11 +5,15 @@ RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories
 
 WORKDIR /app
 
-# 配置 npm 国内镜像源
-RUN npm config set registry https://registry.npmmirror.com
+# 配置 npm 国内镜像源和网络参数
+RUN npm config set registry https://registry.npmmirror.com && \
+    npm config set fetch-retry-mintimeout 20000 && \
+    npm config set fetch-retry-maxtimeout 120000 && \
+    npm config set fetch-timeout 300000 && \
+    npm config set maxsockets 5
 
 COPY package*.json ./
-RUN npm install
+RUN npm install --loglevel=info
 
 COPY . .
 
