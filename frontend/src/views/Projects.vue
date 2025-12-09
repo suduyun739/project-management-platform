@@ -21,10 +21,10 @@
       <div class="filter-bar">
         <el-input
           v-model="filters.search"
-          placeholder="搜索项目或需求"
-          style="width: 250px"
+          placeholder="搜索项目"
+          style="width: 180px"
           clearable
-          @change="fetchData"
+          @change="handleSearch"
         >
           <template #prefix><el-icon><Search /></el-icon></template>
         </el-input>
@@ -32,7 +32,7 @@
         <el-select
           v-model="filters.projectStatus"
           placeholder="项目状态"
-          style="width: 150px"
+          style="width: 130px"
           clearable
           @change="fetchData"
         >
@@ -42,11 +42,24 @@
         </el-select>
 
         <el-select
+          v-model="filters.projectPriority"
+          placeholder="项目优先级"
+          style="width: 130px"
+          clearable
+          @change="handleProjectPriorityFilter"
+        >
+          <el-option label="低" value="LOW" />
+          <el-option label="中" value="MEDIUM" />
+          <el-option label="高" value="HIGH" />
+          <el-option label="紧急" value="URGENT" />
+        </el-select>
+
+        <el-select
           v-model="filters.requirementStatus"
           placeholder="需求状态"
-          style="width: 150px"
+          style="width: 130px"
           clearable
-          @change="fetchData"
+          @change="handleRequirementStatusFilter"
         >
           <el-option label="待处理" value="PENDING" />
           <el-option label="进行中" value="IN_PROGRESS" />
@@ -55,11 +68,11 @@
         </el-select>
 
         <el-select
-          v-model="filters.priority"
-          placeholder="优先级"
-          style="width: 150px"
+          v-model="filters.requirementPriority"
+          placeholder="需求优先级"
+          style="width: 130px"
           clearable
-          @change="fetchData"
+          @change="handleRequirementPriorityFilter"
         >
           <el-option label="低" value="LOW" />
           <el-option label="中" value="MEDIUM" />
@@ -67,8 +80,13 @@
           <el-option label="紧急" value="URGENT" />
         </el-select>
 
-        <el-button @click="expandAll" :icon="Expand">全部展开</el-button>
-        <el-button @click="collapseAll" :icon="Fold">全部折叠</el-button>
+        <el-switch
+          v-model="expandAllState"
+          @change="toggleExpandAll"
+          active-text="全部展开"
+          inactive-text="全部折叠"
+          style="--el-switch-on-color: #13ce66; --el-switch-off-color: #909399;"
+        />
       </div>
 
       <!-- 项目与需求树形列表 -->
@@ -85,11 +103,13 @@
         <!-- 名称/标题列 -->
         <el-table-column label="项目/需求" min-width="300">
           <template #default="{ row }">
-            <div class="title-cell">
+            <div class="title-cell" :style="{ paddingLeft: getTitlePaddingLeft(row) }">
               <strong v-if="row.isProject" style="font-size: 16px">
                 📁 {{ row.name }}
               </strong>
-              <span v-else>{{ row.title }}</span>
+              <span v-else :style="{ color: row.parentId ? '#606266' : '#303133' }">
+                {{ row.title }}
+              </span>
             </div>
           </template>
         </el-table-column>
@@ -140,8 +160,29 @@
         <!-- 优先级列 -->
         <el-table-column label="优先级" width="130">
           <template #default="{ row }">
+            <!-- 项目优先级 -->
             <el-select
-              v-if="!row.isProject"
+              v-if="row.isProject"
+              v-model="row.priority"
+              @change="handleProjectPriorityChange(row)"
+              size="small"
+            >
+              <el-option label="低" value="LOW">
+                <el-tag type="info" size="small">低</el-tag>
+              </el-option>
+              <el-option label="中" value="MEDIUM">
+                <el-tag size="small">中</el-tag>
+              </el-option>
+              <el-option label="高" value="HIGH">
+                <el-tag type="warning" size="small">高</el-tag>
+              </el-option>
+              <el-option label="紧急" value="URGENT">
+                <el-tag type="danger" size="small">紧急</el-tag>
+              </el-option>
+            </el-select>
+            <!-- 需求优先级 -->
+            <el-select
+              v-else
               v-model="row.priority"
               @change="handleRequirementPriorityChange(row)"
               size="small"
@@ -159,7 +200,6 @@
                 <el-tag type="danger" size="small">紧急</el-tag>
               </el-option>
             </el-select>
-            <span v-else>-</span>
           </template>
         </el-table-column>
 
@@ -171,7 +211,7 @@
               v-model="row.assigneeIds"
               @change="handleRequirementAssigneesChange(row)"
               multiple
-              collapse-tags
+              :max-collapse-tags="2"
               collapse-tags-tooltip
               size="small"
               placeholder="选择负责人"
@@ -184,28 +224,28 @@
         </el-table-column>
 
         <!-- 时间列 -->
-        <el-table-column label="时间" width="220">
+        <el-table-column label="时间" width="140">
           <template #default="{ row }">
-            <!-- 项目时间 -->
-            <div v-if="row.isProject" class="date-cell">
+            <!-- 项目时间（三行显示） -->
+            <div v-if="row.isProject" class="time-cell">
               <el-date-picker
                 v-model="row.startDate"
                 type="date"
                 size="small"
-                placeholder="开始"
+                placeholder="开始日期"
                 @change="handleProjectDateChange(row, 'startDate')"
                 value-format="YYYY-MM-DD"
-                style="width: 105px"
+                style="width: 100%"
               />
-              <span style="margin: 0 2px">-</span>
+              <div class="time-divider">|</div>
               <el-date-picker
                 v-model="row.endDate"
                 type="date"
                 size="small"
-                placeholder="结束"
+                placeholder="结束日期"
                 @change="handleProjectDateChange(row, 'endDate')"
                 value-format="YYYY-MM-DD"
-                style="width: 105px"
+                style="width: 100%"
               />
             </div>
             <!-- 需求预估工时 -->
@@ -313,6 +353,14 @@
             <el-option label="进行中" value="ACTIVE" />
             <el-option label="已完成" value="COMPLETED" />
             <el-option label="已归档" value="ARCHIVED" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="优先级" prop="priority">
+          <el-select v-model="projectForm.priority" style="width: 100%">
+            <el-option label="低" value="LOW" />
+            <el-option label="中" value="MEDIUM" />
+            <el-option label="高" value="HIGH" />
+            <el-option label="紧急" value="URGENT" />
           </el-select>
         </el-form-item>
         <el-form-item label="开始日期">
@@ -461,6 +509,7 @@ const requirements = ref<Requirement[]>([])
 const tasks = ref<Task[]>([])
 const userOptions = ref<User[]>([])
 const tableRef = ref<any>()
+const expandAllState = ref(false)
 
 // 项目对话框
 const projectDialogVisible = ref(false)
@@ -471,6 +520,7 @@ const projectForm = reactive<any>({
   name: '',
   description: '',
   status: 'ACTIVE',
+  priority: 'MEDIUM',
   startDate: null,
   endDate: null
 })
@@ -496,8 +546,9 @@ const requirementForm = reactive<any>({
 const filters = reactive({
   search: '',
   projectStatus: '',
+  projectPriority: '',
   requirementStatus: '',
-  priority: ''
+  requirementPriority: ''
 })
 
 // 表单验证规则
@@ -543,6 +594,70 @@ const treeData = computed(() => {
 })
 
 /**
+ * 获取标题缩进
+ */
+const getTitlePaddingLeft = (row: any): string => {
+  if (row.isProject) return '0px'
+  if (row.parentId) return '40px' // 子需求
+  return '20px' // 顶层需求
+}
+
+/**
+ * 切换全部展开/折叠
+ */
+const toggleExpandAll = (value: boolean) => {
+  if (value) {
+    expandAll()
+  } else {
+    collapseAll()
+  }
+}
+
+/**
+ * 搜索处理（仅按项目搜索，搜索后自动展开）
+ */
+const handleSearch = async () => {
+  await fetchData()
+  if (filters.search) {
+    await nextTick()
+    expandAll()
+  }
+}
+
+/**
+ * 项目优先级筛选处理（筛选后自动展开）
+ */
+const handleProjectPriorityFilter = async () => {
+  await fetchData()
+  if (filters.projectPriority) {
+    await nextTick()
+    expandAll()
+  }
+}
+
+/**
+ * 需求状态筛选处理（筛选后自动展开）
+ */
+const handleRequirementStatusFilter = async () => {
+  await fetchData()
+  if (filters.requirementStatus) {
+    await nextTick()
+    expandAll()
+  }
+}
+
+/**
+ * 需求优先级筛选处理（筛选后自动展开）
+ */
+const handleRequirementPriorityFilter = async () => {
+  await fetchData()
+  if (filters.requirementPriority) {
+    await nextTick()
+    expandAll()
+  }
+}
+
+/**
  * 构建项目-需求树形结构
  */
 const buildProjectTree = (): any[] => {
@@ -552,25 +667,30 @@ const buildProjectTree = (): any[] => {
   let filteredProjects = projects.value
   if (filters.search) {
     filteredProjects = filteredProjects.filter(
-      p => p.name.includes(filters.search) || p.description?.includes(filters.search)
+      p => p.name.includes(filters.search)
     )
   }
   if (filters.projectStatus) {
     filteredProjects = filteredProjects.filter(p => p.status === filters.projectStatus)
   }
+  if (filters.projectPriority) {
+    filteredProjects = filteredProjects.filter(p => p.priority === filters.projectPriority)
+  }
 
   // 筛选需求
   let filteredRequirements = requirements.value
+
+  // 如果搜索项目，则显示该项目下的所有需求
   if (filters.search) {
-    filteredRequirements = filteredRequirements.filter(
-      r => r.title.includes(filters.search) || r.description?.includes(filters.search)
-    )
+    const matchedProjectIds = filteredProjects.map(p => p.id)
+    filteredRequirements = filteredRequirements.filter(r => matchedProjectIds.includes(r.projectId))
   }
+
   if (filters.requirementStatus) {
     filteredRequirements = filteredRequirements.filter(r => r.status === filters.requirementStatus)
   }
-  if (filters.priority) {
-    filteredRequirements = filteredRequirements.filter(r => r.priority === filters.priority)
+  if (filters.requirementPriority) {
+    filteredRequirements = filteredRequirements.filter(r => r.priority === filters.requirementPriority)
   }
 
   // 构建需求Map
@@ -608,6 +728,7 @@ const buildProjectTree = (): any[] => {
       ...project,
       id: `project-${project.id}`,
       isProject: true,
+      priority: project.priority || 'MEDIUM',
       requirementProgress,
       taskProgress,
       children: []
@@ -724,6 +845,7 @@ const showCreateProjectDialog = () => {
     name: '',
     description: '',
     status: 'ACTIVE',
+    priority: 'MEDIUM',
     startDate: null,
     endDate: null
   })
@@ -740,6 +862,7 @@ const handleEditProject = (row: any) => {
     name: row.name,
     description: row.description,
     status: row.status,
+    priority: row.priority || 'MEDIUM',
     startDate: row.startDate || null,
     endDate: row.endDate || null
   })
@@ -760,6 +883,7 @@ const handleProjectSubmit = async () => {
         name: projectForm.name,
         description: projectForm.description,
         status: projectForm.status,
+        priority: projectForm.priority,
         startDate: projectForm.startDate,
         endDate: projectForm.endDate
       }
@@ -812,6 +936,21 @@ const handleProjectStatusChange = async (row: any) => {
   try {
     await updateProject(projectId, { status: row.status })
     ElMessage.success('状态更新成功')
+  } catch (error: any) {
+    ElMessage.error(error.message || '更新失败')
+    Object.assign(row, originalData)
+  }
+}
+
+/**
+ * 项目优先级行内编辑
+ */
+const handleProjectPriorityChange = async (row: any) => {
+  const projectId = row.id.replace('project-', '')
+  const originalData = { ...row }
+  try {
+    await updateProject(projectId, { priority: row.priority })
+    ElMessage.success('优先级更新成功')
   } catch (error: any) {
     ElMessage.error(error.message || '更新失败')
     Object.assign(row, originalData)
@@ -1071,6 +1210,21 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   gap: 2px;
+}
+
+.time-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: center;
+}
+
+.time-divider {
+  color: #909399;
+  font-size: 12px;
+  text-align: center;
+  height: 1px;
+  line-height: 1px;
 }
 
 .progress-cell {
