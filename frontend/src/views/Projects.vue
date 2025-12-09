@@ -522,7 +522,7 @@ const requirements = ref<Requirement[]>([])
 const tasks = ref<Task[]>([])
 const userOptions = ref<User[]>([])
 const tableRef = ref<any>()
-const expandAllState = ref(false)
+const expandAllState = ref(true)
 
 // 项目对话框
 const projectDialogVisible = ref(false)
@@ -1200,6 +1200,8 @@ const resetRequirementForm = () => {
  */
 onMounted(async () => {
   await fetchData()
+  await nextTick()
+  expandAll()
 })
 </script>
 

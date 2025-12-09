@@ -705,6 +705,8 @@ onMounted(async () => {
     projectOptions.value = projects
     userOptions.value = users
     await fetchData()
+    await nextTick()
+    expandAll()
   } catch (error: any) {
     ElMessage.error(error.message || '初始化失败')
   }
