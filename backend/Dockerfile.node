@@ -1,0 +1,42 @@
+# 方案1: 使用官方 Node 镜像（不依赖 Alpine apk）
+FROM node:18-slim
+
+# 安装 OpenSSL（Prisma 需要），Debian 源更稳定
+RUN apt-get update && \
+    apt-get install -y openssl ca-certificates && \
+    rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# 配置 npm 国内镜像源
+RUN npm config set registry https://registry.npmmirror.com && \
+    npm config set fetch-retry-mintimeout 20000 && \
+    npm config set fetch-retry-maxtimeout 120000 && \
+    npm config set fetch-timeout 300000
+
+# 复制 package.json
+COPY package*.json ./
+
+# 安装依赖
+RUN npm install --loglevel=info
+
+# 复制 Prisma schema
+COPY prisma ./prisma/
+
+# 生成 Prisma Client
+RUN npx prisma generate
+
+# 复制源代码
+COPY . .
+
+# 构建
+RUN npm run build
+
+# 生产环境优化
+RUN npm prune --production && npm install prisma tsx
+
+# 暴露端口
+EXPOSE 3000
+
+# 启动脚本
+CMD ["sh", "-c", "npx prisma migrate deploy && (npm run prisma:seed || echo 'Seed skipped') && npm start"]

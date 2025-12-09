@@ -1,0 +1,60 @@
+# Docker Compose 配置 - 使用 Node Slim 镜像（方案1）
+# 使用方法: docker compose -f docker-compose.node.yml up -d --build
+
+services:
+  postgres:
+    image: postgres:14-alpine
+    container_name: pm_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: project_management
+      POSTGRES_USER: pmuser
+      POSTGRES_PASSWORD: pmpassword
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - pm_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pmuser -d project_management"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.node
+    container_name: pm_backend
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://pmuser:pmpassword@postgres:5432/project_management
+      JWT_SECRET: ${JWT_SECRET:-CHANGE_THIS_SECRET_IN_PRODUCTION}
+      PORT: 3000
+    expose:
+      - "3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - pm_network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.debian
+    container_name: pm_frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - pm_network
+
+volumes:
+  postgres_data:
+
+networks:
+  pm_network:
+    driver: bridge

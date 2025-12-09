@@ -1,0 +1,58 @@
+# 方案2: Alpine 多镜像源 Fallback 机制
+FROM node:18-alpine
+
+WORKDIR /app
+
+# 尝试多个 Alpine 镜像源（阿里云 -> 清华 -> 官方）
+RUN set -ex && \
+    # 尝试阿里云镜像
+    (sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories && \
+     apk update --no-cache 2>/dev/null) || \
+    # 失败则尝试清华镜像
+    (sed -i 's|https://.*alpinelinux.org|https://mirrors.tuna.tsinghua.edu.cn|g' /etc/apk/repositories && \
+     apk update --no-cache 2>/dev/null) || \
+    # 失败则尝试中科大镜像
+    (sed -i 's|https://.*alpinelinux.org|https://mirrors.ustc.edu.cn|g' /etc/apk/repositories && \
+     apk update --no-cache 2>/dev/null) || \
+    # 最后尝试官方源
+    (echo "http://dl-cdn.alpinelinux.org/alpine/v3.21/main" > /etc/apk/repositories && \
+     echo "http://dl-cdn.alpinelinux.org/alpine/v3.21/community" >> /etc/apk/repositories && \
+     apk update --no-cache)
+
+# 安装必要的构建工具
+RUN apk add --no-cache python3 make g++ openssl openssl-dev || \
+    (sleep 5 && apk add --no-cache python3 make g++ openssl openssl-dev)
+
+# 配置 npm 国内镜像源
+RUN npm config set registry https://registry.npmmirror.com && \
+    npm config set fetch-retry-mintimeout 20000 && \
+    npm config set fetch-retry-maxtimeout 120000 && \
+    npm config set fetch-timeout 300000
+
+# 复制 package.json
+COPY package*.json ./
+
+# 安装依赖（带重试）
+RUN npm install --loglevel=info || \
+    (sleep 10 && npm install --loglevel=info)
+
+# 复制 Prisma schema
+COPY prisma ./prisma/
+
+# 生成 Prisma Client
+RUN npx prisma generate
+
+# 复制源代码
+COPY . .
+
+# 构建
+RUN npm run build
+
+# 生产环境优化
+RUN npm prune --production && npm install prisma tsx
+
+# 暴露端口
+EXPOSE 3000
+
+# 启动脚本
+CMD ["sh", "-c", "npx prisma migrate deploy && (npm run prisma:seed || echo 'Seed skipped') && npm start"]
