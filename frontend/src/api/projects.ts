@@ -32,3 +32,7 @@ export const deleteProject = (id: string) => {
 export const reorderProjects = (projectIds: string[]) => {
   return request.post('/projects/reorder', { projectIds })
 }
+
+export const sortProject = (id: string, action: 'moveUp' | 'moveDown' | 'pinToTop') => {
+  return request.post(`/projects/${id}/sort`, { action })
+}

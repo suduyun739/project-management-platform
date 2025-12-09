@@ -22,7 +22,7 @@
 
         <el-menu-item index="/tasks">
           <el-icon><List /></el-icon>
-          <span>任务</span>
+          <span>需求与任务</span>
         </el-menu-item>
 
         <el-menu-item v-if="authStore.isAdmin()" index="/users">
@@ -133,7 +133,7 @@ const breadcrumbs = computed(() => {
   const map: Record<string, string> = {
     '/dashboard': '数据看板',
     '/projects': '项目与需求',
-    '/tasks': '任务',
+    '/tasks': '需求与任务',
     '/users': '用户管理'
   }
   return [map[route.path] || '首页']

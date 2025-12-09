@@ -290,10 +290,19 @@
         </el-table-column>
 
         <!-- 操作列 -->
-        <el-table-column label="操作" width="180" fixed="right">
+        <el-table-column label="操作" width="280" fixed="right">
           <template #default="{ row }">
             <!-- 项目操作 -->
-            <div v-if="row.isProject">
+            <div v-if="row.isProject" class="project-operations">
+              <el-button link type="warning" size="small" @click="handleSortProject(row, 'pinToTop')" title="置顶">
+                <el-icon><Top /></el-icon>
+              </el-button>
+              <el-button link type="info" size="small" @click="handleSortProject(row, 'moveUp')" title="上移">
+                <el-icon><ArrowUp /></el-icon>
+              </el-button>
+              <el-button link type="info" size="small" @click="handleSortProject(row, 'moveDown')" title="下移">
+                <el-icon><ArrowDown /></el-icon>
+              </el-button>
               <el-button link type="primary" size="small" @click="handleEditProject(row)">
                 编辑
               </el-button>
@@ -493,8 +502,8 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted, computed, nextTick } from 'vue'
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
-import { Plus, Search, Expand, Fold } from '@element-plus/icons-vue'
-import { getProjects, createProject, updateProject, deleteProject } from '@/api/projects'
+import { Plus, Search, Expand, Fold, Top, ArrowUp, ArrowDown } from '@element-plus/icons-vue'
+import { getProjects, createProject, updateProject, deleteProject, sortProject } from '@/api/projects'
 import { getRequirements, createRequirement, updateRequirement, deleteRequirement } from '@/api/requirements'
 import { getTasks } from '@/api/tasks'
 import { getUsers } from '@/api/users'
@@ -925,6 +934,21 @@ const handleDeleteProject = (row: any) => {
       }
     })
     .catch(() => {})
+}
+
+/**
+ * 项目排序（上移/下移/置顶）
+ */
+const handleSortProject = async (row: any, action: 'moveUp' | 'moveDown' | 'pinToTop') => {
+  const projectId = row.id.replace('project-', '')
+  try {
+    await sortProject(projectId, action)
+    const actionText = action === 'pinToTop' ? '置顶' : action === 'moveUp' ? '上移' : '下移'
+    ElMessage.success(`项目${actionText}成功`)
+    await fetchData()
+  } catch (error: any) {
+    ElMessage.error(error.message || '排序失败')
+  }
 }
 
 /**

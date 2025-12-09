@@ -239,6 +239,108 @@ router.delete('/:id', async (req: AuthRequest, res) => {
   }
 });
 
+// 项目排序操作（上移/下移/置顶）
+router.post('/:id/sort', async (req: AuthRequest, res) => {
+  try {
+    const { id } = req.params;
+    const { action } = req.body; // 'moveUp' | 'moveDown' | 'pinToTop'
+
+    if (!['moveUp', 'moveDown', 'pinToTop'].includes(action)) {
+      return res.status(400).json({ error: '无效的排序操作' });
+    }
+
+    // 获取当前项目
+    const currentProject = await prisma.project.findUnique({
+      where: { id },
+    });
+
+    if (!currentProject) {
+      return res.status(404).json({ error: '项目不存在' });
+    }
+
+    // 权限检查
+    if (req.user?.role !== 'ADMIN' && currentProject.creatorId !== req.user!.id) {
+      return res.status(403).json({ error: '无权修改此项目' });
+    }
+
+    // 获取所有项目（按当前排序）
+    const where: any = {};
+    if (req.user?.role !== 'ADMIN') {
+      where.creatorId = req.user!.id;
+    }
+
+    const allProjects = await prisma.project.findMany({
+      where,
+      orderBy: { sortOrder: 'asc' },
+    });
+
+    const currentIndex = allProjects.findIndex(p => p.id === id);
+
+    if (currentIndex === -1) {
+      return res.status(404).json({ error: '项目不存在' });
+    }
+
+    let updates: any[] = [];
+
+    if (action === 'pinToTop') {
+      // 置顶：当前项目 sortOrder = 1，其他项目 +1
+      updates = allProjects.map((project, index) => {
+        if (project.id === id) {
+          return prisma.project.update({
+            where: { id: project.id },
+            data: { sortOrder: 1 },
+          });
+        } else if (index < currentIndex) {
+          return prisma.project.update({
+            where: { id: project.id },
+            data: { sortOrder: index + 2 },
+          });
+        } else {
+          return prisma.project.update({
+            where: { id: project.id },
+            data: { sortOrder: index + 1 },
+          });
+        }
+      });
+    } else if (action === 'moveUp' && currentIndex > 0) {
+      // 上移：与前一个项目交换 sortOrder
+      const prevProject = allProjects[currentIndex - 1];
+      updates = [
+        prisma.project.update({
+          where: { id },
+          data: { sortOrder: prevProject.sortOrder },
+        }),
+        prisma.project.update({
+          where: { id: prevProject.id },
+          data: { sortOrder: currentProject.sortOrder },
+        }),
+      ];
+    } else if (action === 'moveDown' && currentIndex < allProjects.length - 1) {
+      // 下移：与后一个项目交换 sortOrder
+      const nextProject = allProjects[currentIndex + 1];
+      updates = [
+        prisma.project.update({
+          where: { id },
+          data: { sortOrder: nextProject.sortOrder },
+        }),
+        prisma.project.update({
+          where: { id: nextProject.id },
+          data: { sortOrder: currentProject.sortOrder },
+        }),
+      ];
+    }
+
+    if (updates.length > 0) {
+      await prisma.$transaction(updates);
+    }
+
+    res.json({ message: '项目排序更新成功' });
+  } catch (error) {
+    console.error('更新项目排序错误:', error);
+    res.status(500).json({ error: '更新项目排序失败' });
+  }
+});
+
 // 批量更新项目排序
 router.post('/reorder', async (req: AuthRequest, res) => {
   try {

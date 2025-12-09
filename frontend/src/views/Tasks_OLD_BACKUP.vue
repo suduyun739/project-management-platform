@@ -3,7 +3,7 @@
     <el-card>
       <template #header>
         <div class="card-header">
-          <span>需求与任务</span>
+          <span>任务管理</span>
           <el-button type="primary" @click="showCreateDialog">
             <el-icon><Plus /></el-icon>
             新建任务
@@ -11,19 +11,23 @@
         </div>
       </template>
 
-      <!-- 优化后的筛选功能 -->
+      <!-- 强大的筛选功能 -->
       <div class="filter-bar">
         <el-input
           v-model="filters.search"
-          placeholder="搜索项目名称"
-          style="width: 180px"
+          placeholder="搜索任务标题/描述"
+          style="width: 250px"
           clearable
-          @change="handleSearch"
+          @change="fetchData"
         >
           <template #prefix><el-icon><Search /></el-icon></template>
         </el-input>
 
-        <el-select v-model="filters.status" placeholder="任务状态" style="width: 130px" clearable @change="handleFilter">
+        <el-select v-model="filters.projectId" placeholder="筛选项目" style="width: 180px" clearable @change="fetchData">
+          <el-option v-for="p in projectOptions" :key="p.id" :label="p.name" :value="p.id" />
+        </el-select>
+
+        <el-select v-model="filters.status" placeholder="状态" style="width: 150px" clearable @change="fetchData">
           <el-option label="待处理" value="TODO" />
           <el-option label="进行中" value="IN_PROGRESS" />
           <el-option label="测试中" value="TESTING" />
@@ -31,23 +35,26 @@
           <el-option label="已阻塞" value="BLOCKED" />
         </el-select>
 
+        <el-select v-model="filters.priority" placeholder="优先级" style="width: 150px" clearable @change="fetchData">
+          <el-option label="低" value="LOW" />
+          <el-option label="中" value="MEDIUM" />
+          <el-option label="高" value="HIGH" />
+          <el-option label="紧急" value="URGENT" />
+        </el-select>
+
         <el-select
           v-model="filters.assigneeId"
           placeholder="负责人"
-          style="width: 130px"
+          style="width: 150px"
           clearable
-          @change="handleFilter"
+          @change="fetchData"
+          v-if="authStore.isAdmin()"
         >
           <el-option v-for="u in userOptions" :key="u.id" :label="u.name" :value="u.id" />
         </el-select>
 
-        <el-switch
-          v-model="expandAllState"
-          @change="toggleExpandAll"
-          active-text="全部展开"
-          inactive-text="全部折叠"
-          style="--el-switch-on-color: #13ce66; --el-switch-off-color: #909399;"
-        />
+        <el-button @click="expandAll" :icon="Expand">全部展开</el-button>
+        <el-button @click="collapseAll" :icon="Fold">全部折叠</el-button>
       </div>
 
       <!-- 树形任务列表 -->
@@ -61,31 +68,69 @@
         :default-expand-all="true"
         border
       >
-        <!-- 任务/需求标题列（支持层级和缩进） -->
-        <el-table-column label="任务/需求标题" min-width="350">
+        <!-- 任务标题列（支持层级） -->
+        <el-table-column prop="title" label="任务标题" min-width="300">
           <template #default="{ row }">
-            <div class="title-cell" :style="{ paddingLeft: getTitlePaddingLeft(row) }">
-              <span :style="{ color: getTitleColor(row), fontWeight: getTitleFontWeight(row) }">
-                {{ row.title }}
-              </span>
+            <div class="title-cell">
+              <span>{{ row.title }}</span>
+              <el-button
+                v-if="!row.parentId || row.level < 2"
+                link
+                type="primary"
+                size="small"
+                @click="showCreateChildDialog(row)"
+              >
+                <el-icon><Plus /></el-icon>
+                添加子任务
+              </el-button>
             </div>
           </template>
         </el-table-column>
 
-        <!-- 所属需求（仅显示，不编辑） -->
-        <el-table-column label="所属需求" width="140">
+        <!-- 所属项目（行内编辑） -->
+        <el-table-column label="所属项目" width="180">
           <template #default="{ row }">
-            <span v-if="row.isRequirement" class="requirement-badge">需求</span>
-            <span v-else-if="row.requirementTitle">{{ row.requirementTitle }}</span>
+            <el-select
+              v-if="!row.isRequirementRow && !row.isProjectRow"
+              v-model="row.projectId"
+              @change="handleProjectChange(row)"
+              size="small"
+              :disabled="!!row.parentId"
+            >
+              <el-option v-for="p in projectOptions" :key="p.id" :label="p.name" :value="p.id" />
+            </el-select>
+            <strong v-else-if="row.isProjectRow">{{ row.projectName }}</strong>
+          </template>
+        </el-table-column>
+
+        <!-- 所属需求（行内编辑） -->
+        <el-table-column label="所属需求" width="180">
+          <template #default="{ row }">
+            <el-select
+              v-if="!row.isRequirementRow && !row.isProjectRow && !row.parentId"
+              v-model="row.requirementId"
+              @change="handleRequirementChange(row)"
+              size="small"
+              clearable
+              placeholder="选择需求"
+            >
+              <el-option
+                v-for="r in getRequirementsByProject(row.projectId)"
+                :key="r.id"
+                :label="r.title"
+                :value="r.id"
+              />
+            </el-select>
+            <strong v-else-if="row.isRequirementRow">{{ row.requirementTitle }}</strong>
             <span v-else>-</span>
           </template>
         </el-table-column>
 
         <!-- 优先级（行内编辑） -->
-        <el-table-column label="优先级" width="110">
+        <el-table-column label="优先级" width="130">
           <template #default="{ row }">
             <el-select
-              v-if="!row.isRequirement"
+              v-if="!row.isProjectRow && !row.isRequirementRow"
               v-model="row.priority"
               @change="handlePriorityChange(row)"
               size="small"
@@ -107,10 +152,10 @@
         </el-table-column>
 
         <!-- 状态（行内编辑） -->
-        <el-table-column label="状态" width="120">
+        <el-table-column label="状态" width="140">
           <template #default="{ row }">
             <el-select
-              v-if="!row.isRequirement"
+              v-if="!row.isProjectRow && !row.isRequirementRow"
               v-model="row.status"
               @change="handleStatusChange(row)"
               size="small"
@@ -134,15 +179,15 @@
           </template>
         </el-table-column>
 
-        <!-- 负责人（多选行内编辑，至少显示2个） -->
-        <el-table-column label="负责人" width="180">
+        <!-- 负责人（多选行内编辑） -->
+        <el-table-column label="负责人" width="200">
           <template #default="{ row }">
             <el-select
-              v-if="!row.isRequirement"
+              v-if="!row.isProjectRow && !row.isRequirementRow"
               v-model="row.assigneeIds"
               @change="handleAssigneesChange(row)"
               multiple
-              :max-collapse-tags="2"
+              collapse-tags
               collapse-tags-tooltip
               size="small"
               placeholder="选择负责人"
@@ -153,45 +198,57 @@
           </template>
         </el-table-column>
 
-        <!-- 工时（仅预估） -->
-        <el-table-column label="预估工时(天)" width="120">
+        <!-- 工时（预估/实际）（行内编辑） -->
+        <el-table-column label="工时(天)" width="180">
           <template #default="{ row }">
-            <el-input-number
-              v-if="!row.isRequirement"
-              v-model="row.estimatedHours"
-              @change="handleEstimatedHoursChange(row)"
-              :min="0"
-              :step="0.5"
-              :precision="1"
-              size="small"
-              controls-position="right"
-              style="width: 100%"
-            />
+            <div v-if="!row.isRequirementRow && !row.isProjectRow" class="hours-cell">
+              <el-input-number
+                v-model="row.estimatedHours"
+                @change="handleEstimatedHoursChange(row)"
+                :min="0"
+                :step="0.5"
+                :precision="1"
+                size="small"
+                controls-position="right"
+                style="width: 70px"
+              />
+              <span style="margin: 0 4px">/</span>
+              <el-input-number
+                v-model="row.actualHours"
+                @change="handleActualHoursChange(row)"
+                :min="0"
+                :step="0.5"
+                :precision="1"
+                size="small"
+                controls-position="right"
+                style="width: 70px"
+              />
+            </div>
           </template>
         </el-table-column>
 
-        <!-- 时间（3行展示：开始日期 | 截止日期） -->
-        <el-table-column label="时间" width="140">
+        <!-- 开始/截止日期（行内编辑） -->
+        <el-table-column label="开始/截止日期" width="220">
           <template #default="{ row }">
-            <div v-if="!row.isRequirement" class="time-cell">
+            <div v-if="!row.isRequirementRow && !row.isProjectRow" class="date-cell">
               <el-date-picker
                 v-model="row.startDate"
                 @change="handleStartDateChange(row)"
                 type="date"
                 size="small"
-                placeholder="开始日期"
+                placeholder="开始"
                 value-format="YYYY-MM-DD"
-                style="width: 100%"
+                style="width: 100px"
               />
-              <div class="time-divider">|</div>
+              <span style="margin: 0 4px">-</span>
               <el-date-picker
                 v-model="row.dueDate"
                 @change="handleDueDateChange(row)"
                 type="date"
                 size="small"
-                placeholder="截止日期"
+                placeholder="截止"
                 value-format="YYYY-MM-DD"
-                style="width: 100%"
+                style="width: 100px"
               />
             </div>
           </template>
@@ -200,17 +257,7 @@
         <!-- 操作 -->
         <el-table-column label="操作" width="150" fixed="right">
           <template #default="{ row }">
-            <div v-if="!row.isRequirement">
-              <el-button
-                link
-                type="success"
-                size="small"
-                @click="showCreateChildDialog(row)"
-                v-if="!row.parentId || row.level < 2"
-                title="添加子任务"
-              >
-                <el-icon><Plus /></el-icon>
-              </el-button>
+            <div v-if="!row.isProjectRow && !row.isRequirementRow">
               <el-button link type="primary" size="small" @click="handleEdit(row)">编辑</el-button>
               <el-button link type="danger" size="small" @click="handleDelete(row)">删除</el-button>
             </div>
@@ -231,16 +278,22 @@
             v-model="form.description"
             type="textarea"
             :rows="4"
-            placeholder="详细描述任务内容"
+            placeholder="详细描述需求内容"
             maxlength="2000"
             show-word-limit
           />
         </el-form-item>
 
+        <el-form-item label="所属项目" prop="projectId" v-if="!form.parentId">
+          <el-select v-model="form.projectId" style="width: 100%" placeholder="选择项目">
+            <el-option v-for="p in projectOptions" :key="p.id" :label="p.name" :value="p.id" />
+          </el-select>
+        </el-form-item>
+
         <el-form-item label="关联需求" v-if="!form.parentId">
           <el-select v-model="form.requirementId" style="width: 100%" clearable placeholder="选择需求（可选）">
             <el-option
-              v-for="r in requirementOptions"
+              v-for="r in getRequirementsByProject(form.projectId)"
               :key="r.id"
               :label="r.title"
               :value="r.id"
@@ -284,17 +337,34 @@
           </el-select>
         </el-form-item>
 
-        <el-form-item label="预估工时(天)">
-          <el-input-number
-            v-model="form.estimatedHours"
-            :min="0"
-            :step="0.5"
-            :precision="1"
-            placeholder="预估工时"
-            style="width: 100%"
-          />
-          <div class="form-hint">工时以天为单位</div>
-        </el-form-item>
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-form-item label="预估工时(天)">
+              <el-input-number
+                v-model="form.estimatedHours"
+                :min="0"
+                :step="0.5"
+                :precision="1"
+                placeholder="预估工时"
+                style="width: 100%"
+              />
+              <div class="form-hint">工时以天为单位</div>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="实际工时(天)">
+              <el-input-number
+                v-model="form.actualHours"
+                :min="0"
+                :step="0.5"
+                :precision="1"
+                placeholder="实际工时"
+                style="width: 100%"
+              />
+              <div class="form-hint">实际完成的工时</div>
+            </el-form-item>
+          </el-col>
+        </el-row>
 
         <el-row :gutter="20">
           <el-col :span="12">
@@ -333,7 +403,7 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted, computed, nextTick } from 'vue'
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
-import { Plus, Search } from '@element-plus/icons-vue'
+import { Plus, Search, Expand, Fold } from '@element-plus/icons-vue'
 import { getTasks, createTask, updateTask, deleteTask } from '@/api/tasks'
 import { getProjects } from '@/api/projects'
 import { getRequirements } from '@/api/requirements'
@@ -353,14 +423,12 @@ const isEdit = ref(false)
 const formRef = ref<FormInstance>()
 const tableRef = ref<any>()
 const parentTask = ref<Task | null>(null)
-const expandAllState = ref(true)
-
-// 当前筛选的项目ID（默认第一个项目）
-const currentProjectId = ref('')
 
 const filters = reactive({
   search: '',
+  projectId: '',
   status: '',
+  priority: '',
   assigneeId: ''
 })
 
@@ -368,11 +436,13 @@ const form = reactive<any>({
   id: '',
   title: '',
   description: '',
+  projectId: '',
   requirementId: '',
   priority: 'MEDIUM',
   status: 'TODO',
   assigneeIds: [],
   estimatedHours: 0,
+  actualHours: 0,
   startDate: null,
   dueDate: null,
   parentId: ''
@@ -383,6 +453,7 @@ const rules: FormRules = {
     { required: true, message: '请输入任务标题', trigger: 'blur' },
     { min: 2, max: 200, message: '标题长度在 2 到 200 个字符', trigger: 'blur' }
   ],
+  projectId: [{ required: true, message: '请选择项目', trigger: 'change' }],
   priority: [{ required: true, message: '请选择优先级', trigger: 'change' }]
 }
 
@@ -398,36 +469,96 @@ const parentTaskTitle = computed(() => {
   return parentTask.value?.title || ''
 })
 
-/**
- * 构建树形数据结构：需求 → 任务 → 子任务
- */
+// 根据项目获取需求列表
+const getRequirementsByProject = (projectId: string): Requirement[] => {
+  if (!projectId) return []
+  return requirementOptions.value.filter(r => r.projectId === projectId && !r.parentId)
+}
+
+// 构建树形数据结构
 const treeData = computed(() => {
-  return buildRequirementTaskTree(tasks.value)
+  if (filters.projectId || filters.search) {
+    // 如果有筛选条件，显示扁平列表
+    return buildFlatTree(tasks.value)
+  }
+  // 否则按项目分组显示树形结构
+  return buildProjectTree(tasks.value)
 })
 
 /**
- * 构建按需求分组的任务树
+ * 构建扁平树形结构（用于筛选时）
  */
-const buildRequirementTaskTree = (items: Task[]): any[] => {
+const buildFlatTree = (items: Task[]): any[] => {
+  const itemMap = new Map<string, any>()
+  const rootItems: any[] = []
+
+  // 先创建所有节点
+  items.forEach(item => {
+    itemMap.set(item.id, {
+      ...item,
+      assigneeIds: item.assignees?.map(a => a.userId || a.user?.id).filter(Boolean) || [],
+      children: [],
+      level: 0
+    })
+  })
+
+  // 建立父子关系
+  items.forEach(item => {
+    const node = itemMap.get(item.id)!
+    if (item.parentId && itemMap.has(item.parentId)) {
+      const parent = itemMap.get(item.parentId)!
+      parent.children.push(node)
+      node.level = parent.level + 1
+    } else {
+      rootItems.push(node)
+    }
+  })
+
+  return rootItems
+}
+
+/**
+ * 构建按需求分组的树形结构
+ */
+const buildProjectTree = (items: Task[]): any[] => {
+  const projectMap = new Map<string, any>()
   const requirementMap = new Map<string, any>()
   const result: any[] = []
 
-  // 只保留当前项目的任务
-  const projectTasks = items.filter(t => t.projectId === currentProjectId.value)
+  const targetProjectId = filters.projectId
 
-  // 按需求分组
-  projectTasks.forEach(item => {
+  // 按项目和需求分组
+  items.forEach(item => {
+    if (targetProjectId && item.projectId !== targetProjectId) return
+
+    const projectId = item.projectId
     const requirementId = item.requirementId
+
+    // 创建项目节点
+    if (!projectMap.has(projectId)) {
+      const project = projectOptions.value.find(p => p.id === projectId)
+      projectMap.set(projectId, {
+        id: `project-${projectId}`,
+        isProjectRow: true,
+        projectId,
+        projectName: project?.name || '未知项目',
+        title: project?.name || '未知项目',
+        children: []
+      })
+    }
 
     // 如果有需求，创建需求节点
     if (requirementId) {
-      if (!requirementMap.has(requirementId)) {
+      const reqKey = `${projectId}-${requirementId}`
+      if (!requirementMap.has(reqKey)) {
         const requirement = requirementOptions.value.find(r => r.id === requirementId)
-        requirementMap.set(requirementId, {
-          id: `requirement-${requirementId}`,
-          isRequirement: true,
+        requirementMap.set(reqKey, {
+          id: `requirement-${reqKey}`,
+          isRequirementRow: true,
           requirementId,
+          requirementTitle: requirement?.title || '未知需求',
           title: requirement?.title || '未知需求',
+          projectId,
           children: []
         })
       }
@@ -436,18 +567,21 @@ const buildRequirementTaskTree = (items: Task[]): any[] => {
 
   // 构建任务的树形结构
   const itemMap = new Map<string, any>()
-  projectTasks.forEach(item => {
+  items.forEach(item => {
+    if (targetProjectId && item.projectId !== targetProjectId) return
+
     itemMap.set(item.id, {
       ...item,
       assigneeIds: item.assignees?.map(a => a.userId || a.user?.id).filter(Boolean) || [],
-      requirementTitle: item.requirement?.title || '',
       children: [],
       level: 0
     })
   })
 
-  // 建立父子关系并放入对应需求
-  projectTasks.forEach(item => {
+  // 建立父子关系并放入对应需求/项目
+  items.forEach(item => {
+    if (targetProjectId && item.projectId !== targetProjectId) return
+
     const node = itemMap.get(item.id)!
 
     if (item.parentId && itemMap.has(item.parentId)) {
@@ -459,21 +593,35 @@ const buildRequirementTaskTree = (items: Task[]): any[] => {
       // 没有父任务
       if (item.requirementId) {
         // 有需求，添加到需求节点
-        const reqNode = requirementMap.get(item.requirementId)
+        const reqKey = `${item.projectId}-${item.requirementId}`
+        const reqNode = requirementMap.get(reqKey)
         if (reqNode) {
           reqNode.children.push(node)
         }
       } else {
-        // 无需求，直接作为顶层任务
-        result.push(node)
+        // 无需求，直接添加到项目节点
+        const projectNode = projectMap.get(item.projectId)
+        if (projectNode) {
+          projectNode.children.push(node)
+        }
       }
     }
   })
 
-  // 将需求节点添加到结果
+  // 将需求节点添加到项目节点
   requirementMap.forEach(reqNode => {
     if (reqNode.children.length > 0) {
-      result.push(reqNode)
+      const projectNode = projectMap.get(reqNode.projectId)
+      if (projectNode) {
+        projectNode.children.push(reqNode)
+      }
+    }
+  })
+
+  // 转换为数组
+  projectMap.forEach(projectNode => {
+    if (projectNode.children.length > 0) {
+      result.push(projectNode)
     }
   })
 
@@ -481,39 +629,16 @@ const buildRequirementTaskTree = (items: Task[]): any[] => {
 }
 
 /**
- * 获取标题缩进
+ * 获取数据
  */
-const getTitlePaddingLeft = (row: any): string => {
-  if (row.isRequirement) return '0px'
-  if (row.level === 0) return '20px' // 顶层任务
-  if (row.level === 1) return '40px' // 子任务
-  return '60px' // 更深层级
-}
-
-/**
- * 获取标题颜色
- */
-const getTitleColor = (row: any): string => {
-  if (row.isRequirement) return '#303133'
-  return '#606266'
-}
-
-/**
- * 获取标题字重
- */
-const getTitleFontWeight = (row: any): string => {
-  if (row.isRequirement) return 'bold'
-  return 'normal'
-}
-
-/**
- * 展开/折叠切换
- */
-const toggleExpandAll = () => {
-  if (expandAllState.value) {
-    expandAll()
-  } else {
-    collapseAll()
+const fetchData = async () => {
+  loading.value = true
+  try {
+    tasks.value = await getTasks(filters)
+  } catch (error: any) {
+    ElMessage.error(error.message || '获取任务列表失败')
+  } finally {
+    loading.value = false
   }
 }
 
@@ -551,64 +676,6 @@ const collapseAll = () => {
 }
 
 /**
- * 获取数据
- */
-const fetchData = async () => {
-  loading.value = true
-  try {
-    // 构建查询参数
-    const params: any = {
-      projectId: currentProjectId.value
-    }
-
-    if (filters.status) params.status = filters.status
-    if (filters.assigneeId) params.assigneeId = filters.assigneeId
-
-    tasks.value = await getTasks(params)
-  } catch (error: any) {
-    ElMessage.error(error.message || '获取任务列表失败')
-  } finally {
-    loading.value = false
-  }
-}
-
-/**
- * 搜索处理（按项目名搜索）
- */
-const handleSearch = async () => {
-  if (!filters.search) {
-    // 如果清空搜索，恢复默认项目
-    if (projectOptions.value.length > 0) {
-      currentProjectId.value = projectOptions.value[0].id
-    }
-  } else {
-    // 搜索匹配的项目
-    const matchedProject = projectOptions.value.find(p =>
-      p.name.includes(filters.search)
-    )
-    if (matchedProject) {
-      currentProjectId.value = matchedProject.id
-    } else {
-      ElMessage.warning('未找到匹配的项目')
-      return
-    }
-  }
-
-  await fetchData()
-  await nextTick()
-  expandAll()
-}
-
-/**
- * 筛选处理
- */
-const handleFilter = async () => {
-  await fetchData()
-  await nextTick()
-  expandAll()
-}
-
-/**
  * 显示创建对话框
  */
 const showCreateDialog = () => {
@@ -626,6 +693,7 @@ const showCreateChildDialog = (parent: Task) => {
   parentTask.value = parent
   resetFormData()
   form.parentId = parent.id
+  form.projectId = parent.projectId
   dialogVisible.value = true
 }
 
@@ -637,11 +705,13 @@ const resetFormData = () => {
     id: '',
     title: '',
     description: '',
+    projectId: '',
     requirementId: '',
     priority: 'MEDIUM',
     status: 'TODO',
     assigneeIds: [],
     estimatedHours: 0,
+    actualHours: 0,
     startDate: null,
     dueDate: null,
     parentId: ''
@@ -667,11 +737,13 @@ const handleEdit = (row: Task) => {
     id: row.id,
     title: row.title,
     description: row.description || '',
+    projectId: row.projectId,
     requirementId: row.requirementId || '',
     priority: row.priority,
     status: row.status,
     assigneeIds: row.assignees?.map(a => a.userId || a.user?.id).filter(Boolean) || [],
     estimatedHours: row.estimatedHours || 0,
+    actualHours: row.actualHours || 0,
     startDate: row.startDate || null,
     dueDate: row.dueDate || null,
     parentId: row.parentId || ''
@@ -699,12 +771,13 @@ const handleSubmit = async () => {
       const data: any = {
         title: form.title,
         description: form.description,
-        projectId: currentProjectId.value,
+        projectId: form.projectId,
         requirementId: form.requirementId || undefined,
         priority: form.priority,
         status: form.status,
         assigneeIds: form.assigneeIds.length > 0 ? form.assigneeIds : undefined,
         estimatedHours: form.estimatedHours || 0,
+        actualHours: form.actualHours || 0,
         startDate: form.startDate || undefined,
         dueDate: form.dueDate || undefined
       }
@@ -739,7 +812,7 @@ const handleSubmit = async () => {
 }
 
 /**
- * 删除任务
+ * 删除需求
  */
 const handleDelete = (row: Task) => {
   // 检查是否有子任务
@@ -779,6 +852,22 @@ const updateTaskInline = async (row: Task, data: any, successMessage: string) =>
 }
 
 /**
+ * 处理项目变更
+ */
+const handleProjectChange = async (row: Task) => {
+  await updateTaskInline(row, { projectId: row.projectId }, '项目更新成功')
+  fetchData() // 重新加载以更新树形结构
+}
+
+/**
+ * 处理需求变更
+ */
+const handleRequirementChange = async (row: Task) => {
+  await updateTaskInline(row, { requirementId: row.requirementId || undefined }, '需求更新成功')
+  fetchData() // 重新加载以更新树形结构
+}
+
+/**
  * 处理优先级变更
  */
 const handlePriorityChange = async (row: Task) => {
@@ -809,6 +898,13 @@ const handleEstimatedHoursChange = async (row: Task) => {
 }
 
 /**
+ * 处理实际工时变更
+ */
+const handleActualHoursChange = async (row: Task) => {
+  await updateTaskInline(row, { actualHours: row.actualHours }, '实际工时更新成功')
+}
+
+/**
  * 处理开始日期变更
  */
 const handleStartDateChange = async (row: Task) => {
@@ -836,9 +932,9 @@ onMounted(async () => {
     requirementOptions.value = requirements
     userOptions.value = users
 
-    // 默认显示第一个项目的任务（已按sortOrder排序，第一个就是置顶/最上面的）
-    if (projects.length > 0) {
-      currentProjectId.value = projects[0].id
+    // 默认显示第一个项目的任务
+    if (projects.length > 0 && !filters.projectId) {
+      filters.projectId = projects[0].id
     }
 
     await fetchData()
@@ -870,16 +966,8 @@ onMounted(async () => {
 .title-cell {
   display: flex;
   align-items: center;
-  transition: padding-left 0.3s ease;
-}
-
-.requirement-badge {
-  background-color: #ecf5ff;
-  color: #409eff;
-  padding: 2px 8px;
-  border-radius: 4px;
-  font-size: 12px;
-  font-weight: bold;
+  justify-content: space-between;
+  gap: 8px;
 }
 
 .form-hint {
@@ -888,19 +976,11 @@ onMounted(async () => {
   margin-top: 4px;
 }
 
-.time-cell {
+.hours-cell,
+.date-cell {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
   align-items: center;
-}
-
-.time-divider {
-  color: #909399;
-  font-size: 12px;
-  text-align: center;
-  height: 1px;
-  line-height: 1px;
+  gap: 4px;
 }
 
 /* 树形表格样式优化 */

@@ -13,7 +13,11 @@
       "Bash(npx prisma@5.7.0 migrate dev --name init --create-only)",
       "Bash(git rm:*)",
       "Bash(docker-compose down:*)",
-      "Bash(docker compose:*)"
+      "Bash(docker compose:*)",
+      "Bash(npm run build)",
+      "Bash(npm install)",
+      "Bash(git reset:*)",
+      "Bash(\"\n   - 第三行：结束日期选择器\n   - 列宽优化为140px，显示更完整\n\n5. 搜索功能优化\n   - 仅支持按项目名称搜索\n   - 搜索框宽度缩短为180px\n   - 搜索后自动显示项目下所有需求\n   - 搜索后自动展开所有匹配项目\n\n6. 筛选功能增强\n   - 新增项目优先级筛选\n   - 需求优先级筛选独立\n   - 所有筛选条件宽度统一为130px\n   - 筛选后自动展开相关项目\n\n7. 负责人显示优化\n   - max-collapse-tags设置为2\n   - 最多显示2个负责人标签\n   - 超出部分显示\"+N\"\n   - 鼠标悬停查看全部负责人\n\n新增处理函数:\n- getTitlePaddingLeft() - 计算标题缩进\n- toggleExpandAll() - 切换展开/折叠状态\n- handleSearch() - 搜索后自动展开\n- handleProjectPriorityFilter() - 项目优先级筛选\n- handleRequirementStatusFilter() - 需求状态筛选\n- handleRequirementPriorityFilter() - 需求优先级筛选\n- handleProjectPriorityChange() - 项目优先级行内编辑\n\n数据结构优化:\n- filters新增projectPriority和requirementPriority\n- projectForm新增priority字段（默认MEDIUM）\n- 搜索逻辑改为仅匹配项目名称\n\n样式优化:\n- 新增.time-cell样式（垂直布局）\n- 新增.time-divider样式（分隔符）\n- 优化表格行背景色和字重\n\n🤖 Generated with Claude Code\n\nCo-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>\nEOF\n)\")"
     ],
     "deny": [],
     "ask": []
