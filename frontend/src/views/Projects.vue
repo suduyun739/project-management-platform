@@ -551,7 +551,7 @@ const requirementForm = reactive<any>({
   priority: 'MEDIUM',
   status: 'PENDING',
   assigneeIds: [],
-  estimatedHours: 0,
+  estimatedHours: 1,
   parentId: ''
 })
 
@@ -1016,7 +1016,7 @@ const showCreateRequirementDialog = () => {
     priority: 'MEDIUM',
     status: 'PENDING',
     assigneeIds: [],
-    estimatedHours: 0,
+    estimatedHours: 1,
     parentId: ''
   })
   requirementDialogVisible.value = true
@@ -1036,7 +1036,7 @@ const showCreateChildRequirementDialog = (parent: Requirement) => {
     priority: 'MEDIUM',
     status: 'PENDING',
     assigneeIds: [],
-    estimatedHours: 0,
+    estimatedHours: 1,
     parentId: parent.id
   })
   requirementDialogVisible.value = true

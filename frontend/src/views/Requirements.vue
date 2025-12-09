@@ -318,7 +318,7 @@ const form = reactive<any>({
   priority: 'MEDIUM',
   status: 'PENDING',
   assigneeIds: [],
-  estimatedHours: 0,
+  estimatedHours: 1,
   parentId: ''
 })
 
@@ -528,7 +528,7 @@ const resetFormData = () => {
     priority: 'MEDIUM',
     status: 'PENDING',
     assigneeIds: [],
-    estimatedHours: 0,
+    estimatedHours: 1,
     parentId: ''
   })
 }
