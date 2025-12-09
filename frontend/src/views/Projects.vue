@@ -22,8 +22,8 @@
         <el-switch
           v-model="expandAllState"
           @change="toggleExpandAll"
-          active-text="全部展开"
-          inactive-text="全部折叠"
+          active-text="展开"
+          inactive-text="折叠"
           style="--el-switch-on-color: #13ce66; --el-switch-off-color: #909399;"
         />
 
