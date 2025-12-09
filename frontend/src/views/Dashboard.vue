@@ -10,6 +10,7 @@
           placeholder="选择项目"
           style="width: 250px"
           clearable
+          filterable
           @change="fetchData"
         >
           <el-option

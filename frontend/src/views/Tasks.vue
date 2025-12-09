@@ -21,15 +21,21 @@
           style="--el-switch-on-color: #13ce66; --el-switch-off-color: #909399;"
         />
 
-        <el-input
-          v-model="filters.search"
-          placeholder="搜索项目名称"
-          style="width: 180px"
+        <el-select
+          v-model="currentProjectId"
+          placeholder="选择项目"
+          style="width: 220px"
           clearable
-          @change="handleSearch"
+          filterable
+          @change="handleProjectChange"
         >
-          <template #prefix><el-icon><Search /></el-icon></template>
-        </el-input>
+          <el-option
+            v-for="p in projectOptions"
+            :key="p.id"
+            :label="p.name"
+            :value="p.id"
+          />
+        </el-select>
 
         <el-select v-model="filters.status" placeholder="任务状态" style="width: 130px" clearable @change="handleFilter">
           <el-option label="待处理" value="TODO" />
@@ -570,6 +576,15 @@ const fetchData = async () => {
   } finally {
     loading.value = false
   }
+}
+
+/**
+ * 项目切换处理
+ */
+const handleProjectChange = async () => {
+  await fetchData()
+  await nextTick()
+  expandAll()
 }
 
 /**

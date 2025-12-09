@@ -27,15 +27,21 @@
           style="--el-switch-on-color: #13ce66; --el-switch-off-color: #909399;"
         />
 
-        <el-input
-          v-model="filters.search"
-          placeholder="搜索项目"
-          style="width: 180px"
+        <el-select
+          v-model="filters.selectedProjectId"
+          placeholder="选择项目"
+          style="width: 220px"
           clearable
-          @change="handleSearch"
+          filterable
+          @change="handleProjectSelect"
         >
-          <template #prefix><el-icon><Search /></el-icon></template>
-        </el-input>
+          <el-option
+            v-for="p in projectOptions"
+            :key="p.id"
+            :label="p.name"
+            :value="p.id"
+          />
+        </el-select>
 
         <el-select
           v-model="filters.projectStatus"
@@ -557,6 +563,7 @@ const requirementForm = reactive<any>({
 
 // 筛选条件
 const filters = reactive({
+  selectedProjectId: '',
   search: '',
   projectStatus: '',
   projectPriority: '',
@@ -627,6 +634,17 @@ const toggleExpandAll = (value: boolean) => {
 }
 
 /**
+ * 项目下拉选择处理
+ */
+const handleProjectSelect = async () => {
+  await fetchData()
+  if (filters.selectedProjectId) {
+    await nextTick()
+    expandAll()
+  }
+}
+
+/**
  * 搜索处理（仅按项目搜索，搜索后自动展开）
  */
 const handleSearch = async () => {
@@ -678,6 +696,9 @@ const buildProjectTree = (): any[] => {
 
   // 筛选项目
   let filteredProjects = projects.value
+  if (filters.selectedProjectId) {
+    filteredProjects = filteredProjects.filter(p => p.id === filters.selectedProjectId)
+  }
   if (filters.search) {
     filteredProjects = filteredProjects.filter(
       p => p.name.includes(filters.search)
@@ -693,8 +714,8 @@ const buildProjectTree = (): any[] => {
   // 筛选需求
   let filteredRequirements = requirements.value
 
-  // 如果搜索项目，则显示该项目下的所有需求
-  if (filters.search) {
+  // 如果选择了项目或搜索项目，则显示该项目下的所有需求
+  if (filters.selectedProjectId || filters.search) {
     const matchedProjectIds = filteredProjects.map(p => p.id)
     filteredRequirements = filteredRequirements.filter(r => matchedProjectIds.includes(r.projectId))
   }
