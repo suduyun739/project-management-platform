@@ -1,8 +1,10 @@
 FROM node:18-alpine
 
-# 直接使用官方源，不配置镜像（国内镜像不稳定）
-# 安装必要的构建工具和 OpenSSL（Prisma 需要）
-RUN apk add --no-cache python3 make g++ openssl openssl-dev
+# 配置 Alpine 镜像源（使用阿里云镜像）
+RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories
+
+# 更新包索引并安装必要的构建工具和 OpenSSL（Prisma 需要）
+RUN apk update && apk add --no-cache python3 make g++ openssl openssl-dev
 
 WORKDIR /app
 
