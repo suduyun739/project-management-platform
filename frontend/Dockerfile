@@ -1,9 +1,6 @@
 FROM node:18-alpine as builder
 
-# 配置 Alpine 国内镜像源（使用清华源，更稳定）
-RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.tuna.tsinghua.edu.cn/g' /etc/apk/repositories && \
-    apk update
-
+# 直接使用官方源（国内镜像不稳定）
 WORKDIR /app
 
 # 配置 npm 国内镜像源和网络参数

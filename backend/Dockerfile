@@ -1,9 +1,6 @@
 FROM node:18-alpine
 
-# 配置 Alpine 国内镜像源（使用清华源，更稳定）
-RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.tuna.tsinghua.edu.cn/g' /etc/apk/repositories && \
-    apk update
-
+# 直接使用官方源，不配置镜像（国内镜像不稳定）
 # 安装必要的构建工具和 OpenSSL（Prisma 需要）
 RUN apk add --no-cache python3 make g++ openssl openssl-dev
 
