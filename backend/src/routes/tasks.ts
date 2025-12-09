@@ -66,14 +66,22 @@ router.get('/', async (req: AuthRequest, res) => {
       where.priority = priority;
     }
 
-    // 负责人筛选
+    // 负责人筛选（支持多负责人查询）
     if (assigneeId) {
-      where.assigneeId = assigneeId;
+      where.assignees = {
+        some: {
+          userId: assigneeId as string,
+        },
+      };
     }
 
-    // 普通用户只能看到分配给自己的任务
+    // 非管理员只能看到自己作为负责人之一的任务
     if (req.user?.role !== 'ADMIN' && !assigneeId) {
-      where.assigneeId = req.user!.id;
+      where.assignees = {
+        some: {
+          userId: req.user!.id,
+        },
+      };
     }
 
     // 关键词搜索
@@ -147,11 +155,19 @@ router.get('/kanban', async (req: AuthRequest, res) => {
       where.projectId = projectId;
     }
 
-    // 如果指定了负责人，或普通用户只看自己的任务
+    // 如果指定了负责人，或非管理员只看自己作为负责人之一的任务
     if (assigneeId) {
-      where.assigneeId = assigneeId;
+      where.assignees = {
+        some: {
+          userId: assigneeId as string,
+        },
+      };
     } else if (req.user?.role !== 'ADMIN') {
-      where.assigneeId = req.user!.id;
+      where.assignees = {
+        some: {
+          userId: req.user!.id,
+        },
+      };
     }
 
     const tasks = await prisma.task.findMany({
@@ -246,11 +262,18 @@ router.get('/:id', async (req: AuthRequest, res) => {
       return res.status(404).json({ error: '任务不存在' });
     }
 
-    // 权限检查
-    if (req.user?.role !== 'ADMIN' &&
-        task.assigneeId !== req.user!.id &&
-        task.project.creatorId !== req.user!.id) {
-      return res.status(403).json({ error: '无权访问此任务' });
+    // 权限检查：管理员可以查看所有，非管理员只能查看自己作为负责人之一的任务
+    if (req.user?.role !== 'ADMIN') {
+      const isAssignee = await prisma.taskAssignee.findFirst({
+        where: {
+          taskId: id,
+          userId: req.user!.id,
+        },
+      });
+
+      if (!isAssignee) {
+        return res.status(403).json({ error: '无权访问此任务' });
+      }
     }
 
     res.json(task);
@@ -262,7 +285,7 @@ router.get('/:id', async (req: AuthRequest, res) => {
 // 创建任务
 router.post('/', async (req: AuthRequest, res) => {
   try {
-    const { startDate, dueDate, assigneeIds, ...rest } = createTaskSchema.parse(req.body);
+    let { startDate, dueDate, assigneeIds, ...rest } = createTaskSchema.parse(req.body);
 
     // 检查项目是否存在
     const project = await prisma.project.findUnique({
@@ -273,9 +296,13 @@ router.post('/', async (req: AuthRequest, res) => {
       return res.status(404).json({ error: '项目不存在' });
     }
 
-    // 权限检查
-    if (req.user?.role !== 'ADMIN' && project.creatorId !== req.user!.id) {
-      return res.status(403).json({ error: '无权在此项目下创建任务' });
+    // 非管理员创建时，强制添加自己为负责人
+    if (req.user?.role !== 'ADMIN') {
+      if (!assigneeIds) {
+        assigneeIds = [req.user!.id];
+      } else if (!assigneeIds.includes(req.user!.id)) {
+        assigneeIds.push(req.user!.id);
+      }
     }
 
     const task = await prisma.task.create({
@@ -350,20 +377,23 @@ router.put('/:id', async (req: AuthRequest, res) => {
       return res.status(404).json({ error: '任务不存在' });
     }
 
-    // 权限检查：管理员或项目创建者可以编辑，负责人可以更新自己的任务
+    // 权限检查：管理员可以编辑所有，非管理员只能编辑自己作为负责人之一的任务
     const isAdmin = req.user?.role === 'ADMIN';
-    const isProjectOwner = existingTask.project.creatorId === req.user!.id;
-    const isAssignee = existingTask.assigneeId === req.user!.id;
 
-    if (!isAdmin && !isProjectOwner && !isAssignee) {
-      return res.status(403).json({ error: '无权修改此任务' });
-    }
+    if (!isAdmin) {
+      // 检查用户是否为负责人之一
+      const isAssignee = await prisma.taskAssignee.findFirst({
+        where: {
+          taskId: id,
+          userId: req.user!.id,
+        },
+      });
 
-    // 普通负责人不能修改负责人
-    if (isAssignee && !isAdmin && !isProjectOwner) {
-      if ('assigneeId' in rest || assigneeIds) {
-        return res.status(403).json({ error: '您不能修改任务负责人' });
+      if (!isAssignee) {
+        return res.status(403).json({ error: '无权修改此任务' });
       }
+
+      // 非管理员可以修改自己负责的任务的所有内容
     }
 
     const updateData: any = { ...rest };
@@ -443,10 +473,9 @@ router.delete('/:id', async (req: AuthRequest, res) => {
       return res.status(404).json({ error: '任务不存在' });
     }
 
-    // 权限检查
-    if (req.user?.role !== 'ADMIN' &&
-        existingTask.project.creatorId !== req.user!.id) {
-      return res.status(403).json({ error: '无权删除此任务' });
+    // 权限检查：只有管理员可以删除任务
+    if (req.user?.role !== 'ADMIN') {
+      return res.status(403).json({ error: '只有管理员可以删除任务' });
     }
 
     await prisma.task.delete({

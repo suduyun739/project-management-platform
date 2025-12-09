@@ -3,7 +3,9 @@
     <!-- 筛选器 -->
     <el-card class="filter-card">
       <el-space wrap>
+        <!-- 管理员可以选择项目 -->
         <el-select
+          v-if="authStore.isAdmin()"
           v-model="selectedProjectId"
           placeholder="选择项目"
           style="width: 250px"
@@ -17,6 +19,8 @@
             :value="p.id"
           />
         </el-select>
+        <!-- 非管理员显示提示 -->
+        <el-text v-else size="large" tag="b">我的工作统计</el-text>
         <el-date-picker
           v-model="dateRange"
           type="daterange"
@@ -204,8 +208,10 @@ import type { ECharts } from 'echarts'
 import { getRequirements } from '@/api/requirements'
 import { getTasks } from '@/api/tasks'
 import { getProjects } from '@/api/projects'
+import { useAuthStore } from '@/stores/auth'
 import type { Requirement, Task, Project } from '@/types'
 
+const authStore = useAuthStore()
 const router = useRouter()
 const loading = ref(false)
 const selectedProjectId = ref('')
@@ -296,8 +302,15 @@ const fetchData = async () => {
   loading.value = true
   try {
     const filters: any = {}
-    if (selectedProjectId.value) {
-      filters.projectId = selectedProjectId.value
+
+    // 管理员模式：可以选择项目
+    if (authStore.isAdmin()) {
+      if (selectedProjectId.value) {
+        filters.projectId = selectedProjectId.value
+      }
+    } else {
+      // 非管理员模式：只看自己作为负责人的需求和任务
+      filters.assigneeId = authStore.user?.id
     }
 
     // 获取需求和任务数据
@@ -750,7 +763,15 @@ const handleResize = () => {
 }
 
 onMounted(async () => {
-  projectOptions.value = await getProjects()
+  // 获取项目列表（管理员需要）
+  if (authStore.isAdmin()) {
+    projectOptions.value = await getProjects()
+    // 默认选中第一个项目（已按sortOrder排序，第一个就是置顶/最上面的）
+    if (projectOptions.value.length > 0) {
+      selectedProjectId.value = projectOptions.value[0].id
+    }
+  }
+
   await fetchData()
 
   window.addEventListener('resize', handleResize)

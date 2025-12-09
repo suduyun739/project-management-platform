@@ -53,14 +53,22 @@ router.get('/', async (req: AuthRequest, res) => {
       where.priority = priority;
     }
 
-    // 负责人筛选
+    // 负责人筛选（支持多负责人查询）
     if (assigneeId) {
-      where.assigneeId = assigneeId;
+      where.assignees = {
+        some: {
+          userId: assigneeId as string,
+        },
+      };
     }
 
-    // 普通用户只能看到分配给自己的需求
+    // 非管理员只能看到自己作为负责人之一的需求
     if (req.user?.role !== 'ADMIN' && !assigneeId) {
-      where.assigneeId = req.user!.id;
+      where.assignees = {
+        some: {
+          userId: req.user!.id,
+        },
+      };
     }
 
     // 关键词搜索
@@ -170,11 +178,18 @@ router.get('/:id', async (req: AuthRequest, res) => {
       return res.status(404).json({ error: '需求不存在' });
     }
 
-    // 权限检查
-    if (req.user?.role !== 'ADMIN' &&
-        requirement.assigneeId !== req.user!.id &&
-        requirement.project.creatorId !== req.user!.id) {
-      return res.status(403).json({ error: '无权访问此需求' });
+    // 权限检查：管理员可以查看所有，非管理员只能查看自己作为负责人之一的需求
+    if (req.user?.role !== 'ADMIN') {
+      const isAssignee = await prisma.requirementAssignee.findFirst({
+        where: {
+          requirementId: id,
+          userId: req.user!.id,
+        },
+      });
+
+      if (!isAssignee) {
+        return res.status(403).json({ error: '无权访问此需求' });
+      }
     }
 
     res.json(requirement);
@@ -186,7 +201,7 @@ router.get('/:id', async (req: AuthRequest, res) => {
 // 创建需求
 router.post('/', async (req: AuthRequest, res) => {
   try {
-    const { assigneeIds, ...data } = createRequirementSchema.parse(req.body);
+    let { assigneeIds, ...data } = createRequirementSchema.parse(req.body);
 
     // 检查项目是否存在
     const project = await prisma.project.findUnique({
@@ -197,9 +212,13 @@ router.post('/', async (req: AuthRequest, res) => {
       return res.status(404).json({ error: '项目不存在' });
     }
 
-    // 权限检查
-    if (req.user?.role !== 'ADMIN' && project.creatorId !== req.user!.id) {
-      return res.status(403).json({ error: '无权在此项目下创建需求' });
+    // 非管理员创建时，强制添加自己为负责人
+    if (req.user?.role !== 'ADMIN') {
+      if (!assigneeIds) {
+        assigneeIds = [req.user!.id];
+      } else if (!assigneeIds.includes(req.user!.id)) {
+        assigneeIds.push(req.user!.id);
+      }
     }
 
     const requirement = await prisma.requirement.create({
@@ -266,21 +285,23 @@ router.put('/:id', async (req: AuthRequest, res) => {
       return res.status(404).json({ error: '需求不存在' });
     }
 
-    // 权限检查：管理员或项目创建者可以编辑，负责人只能更新状态
+    // 权限检查：管理员可以编辑所有，非管理员只能编辑自己作为负责人之一的需求
     const isAdmin = req.user?.role === 'ADMIN';
-    const isProjectOwner = existingRequirement.project.creatorId === req.user!.id;
-    const isAssignee = existingRequirement.assigneeId === req.user!.id;
 
-    if (!isAdmin && !isProjectOwner && !isAssignee) {
-      return res.status(403).json({ error: '无权修改此需求' });
-    }
+    if (!isAdmin) {
+      // 检查用户是否为负责人之一
+      const isAssignee = await prisma.requirementAssignee.findFirst({
+        where: {
+          requirementId: id,
+          userId: req.user!.id,
+        },
+      });
 
-    // 普通负责人只能更新状态
-    if (isAssignee && !isAdmin && !isProjectOwner) {
-      const keys = Object.keys(data);
-      if (keys.some(key => key !== 'status') || assigneeIds) {
-        return res.status(403).json({ error: '您只能更新需求状态' });
+      if (!isAssignee) {
+        return res.status(403).json({ error: '无权修改此需求' });
       }
+
+      // 非管理员可以修改自己负责的需求的所有内容
     }
 
     // 准备更新数据
@@ -353,10 +374,9 @@ router.delete('/:id', async (req: AuthRequest, res) => {
       return res.status(404).json({ error: '需求不存在' });
     }
 
-    // 权限检查
-    if (req.user?.role !== 'ADMIN' &&
-        existingRequirement.project.creatorId !== req.user!.id) {
-      return res.status(403).json({ error: '无权删除此需求' });
+    // 权限检查：只有管理员可以删除需求
+    if (req.user?.role !== 'ADMIN') {
+      return res.status(403).json({ error: '只有管理员可以删除需求' });
     }
 
     await prisma.requirement.delete({

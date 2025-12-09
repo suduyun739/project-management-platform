@@ -13,6 +13,14 @@
 
       <!-- 优化后的筛选功能 -->
       <div class="filter-bar">
+        <el-switch
+          v-model="expandAllState"
+          @change="toggleExpandAll"
+          active-text="全部展开"
+          inactive-text="全部折叠"
+          style="--el-switch-on-color: #13ce66; --el-switch-off-color: #909399;"
+        />
+
         <el-input
           v-model="filters.search"
           placeholder="搜索项目名称"
@@ -40,14 +48,6 @@
         >
           <el-option v-for="u in userOptions" :key="u.id" :label="u.name" :value="u.id" />
         </el-select>
-
-        <el-switch
-          v-model="expandAllState"
-          @change="toggleExpandAll"
-          active-text="全部展开"
-          inactive-text="全部折叠"
-          style="--el-switch-on-color: #13ce66; --el-switch-off-color: #909399;"
-        />
       </div>
 
       <!-- 树形任务列表 -->
@@ -212,7 +212,7 @@
                 <el-icon><Plus /></el-icon>
               </el-button>
               <el-button link type="primary" size="small" @click="handleEdit(row)">编辑</el-button>
-              <el-button link type="danger" size="small" @click="handleDelete(row)">删除</el-button>
+              <el-button v-if="authStore.isAdmin()" link type="danger" size="small" @click="handleDelete(row)">删除</el-button>
             </div>
           </template>
         </el-table-column>

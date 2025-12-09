@@ -5,7 +5,7 @@
         <div class="card-header">
           <span>项目与需求管理</span>
           <div class="header-buttons">
-            <el-button type="primary" @click="showCreateProjectDialog">
+            <el-button v-if="authStore.isAdmin()" type="primary" @click="showCreateProjectDialog">
               <el-icon><Plus /></el-icon>
               新建项目
             </el-button>
@@ -19,6 +19,14 @@
 
       <!-- 筛选功能 -->
       <div class="filter-bar">
+        <el-switch
+          v-model="expandAllState"
+          @change="toggleExpandAll"
+          active-text="全部展开"
+          inactive-text="全部折叠"
+          style="--el-switch-on-color: #13ce66; --el-switch-off-color: #909399;"
+        />
+
         <el-input
           v-model="filters.search"
           placeholder="搜索项目"
@@ -79,14 +87,6 @@
           <el-option label="高" value="HIGH" />
           <el-option label="紧急" value="URGENT" />
         </el-select>
-
-        <el-switch
-          v-model="expandAllState"
-          @change="toggleExpandAll"
-          active-text="全部展开"
-          inactive-text="全部折叠"
-          style="--el-switch-on-color: #13ce66; --el-switch-off-color: #909399;"
-        />
       </div>
 
       <!-- 项目与需求树形列表 -->
@@ -121,6 +121,7 @@
             <el-select
               v-if="row.isProject"
               v-model="row.status"
+              :disabled="!authStore.isAdmin()"
               @change="handleProjectStatusChange(row)"
               size="small"
             >
@@ -164,6 +165,7 @@
             <el-select
               v-if="row.isProject"
               v-model="row.priority"
+              :disabled="!authStore.isAdmin()"
               @change="handleProjectPriorityChange(row)"
               size="small"
             >
@@ -232,6 +234,7 @@
                 v-model="row.startDate"
                 type="date"
                 size="small"
+                :disabled="!authStore.isAdmin()"
                 placeholder="开始日期"
                 @change="handleProjectDateChange(row, 'startDate')"
                 value-format="YYYY-MM-DD"
@@ -242,6 +245,7 @@
                 v-model="row.endDate"
                 type="date"
                 size="small"
+                :disabled="!authStore.isAdmin()"
                 placeholder="结束日期"
                 @change="handleProjectDateChange(row, 'endDate')"
                 value-format="YYYY-MM-DD"
@@ -293,7 +297,7 @@
         <el-table-column label="操作" width="280" fixed="right">
           <template #default="{ row }">
             <!-- 项目操作 -->
-            <div v-if="row.isProject" class="project-operations">
+            <div v-if="row.isProject && authStore.isAdmin()" class="project-operations">
               <el-button link type="warning" size="small" @click="handleSortProject(row, 'pinToTop')" title="置顶">
                 <el-icon><Top /></el-icon>
               </el-button>
@@ -311,7 +315,7 @@
               </el-button>
             </div>
             <!-- 需求操作 -->
-            <div v-else>
+            <div v-else-if="!row.isProject">
               <el-button
                 link
                 type="success"
@@ -325,7 +329,7 @@
               <el-button link type="primary" size="small" @click="handleEditRequirement(row)">
                 编辑
               </el-button>
-              <el-button link type="danger" size="small" @click="handleDeleteRequirement(row)">
+              <el-button v-if="authStore.isAdmin()" link type="danger" size="small" @click="handleDeleteRequirement(row)">
                 删除
               </el-button>
             </div>

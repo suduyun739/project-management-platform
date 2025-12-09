@@ -33,10 +33,8 @@ router.get('/', async (req: AuthRequest, res) => {
 
     const where: any = {};
 
-    // 普通用户只能看到自己创建的项目
-    if (req.user?.role !== 'ADMIN') {
-      where.creatorId = req.user!.id;
-    }
+    // 所有人都可以看到所有项目（数据权限优化）
+    // 不再限制 creatorId
 
     // 状态筛选
     if (status) {
@@ -121,20 +119,21 @@ router.get('/:id', async (req: AuthRequest, res) => {
       return res.status(404).json({ error: '项目不存在' });
     }
 
-    // 权限检查：普通用户只能查看自己的项目
-    if (req.user?.role !== 'ADMIN' && project.creatorId !== req.user!.id) {
-      return res.status(403).json({ error: '无权访问此项目' });
-    }
-
+    // 所有人都可以查看项目详情
     res.json(project);
   } catch (error) {
     res.status(500).json({ error: '获取项目详情失败' });
   }
 });
 
-// 创建项目
+// 创建项目（只有管理员可以）
 router.post('/', async (req: AuthRequest, res) => {
   try {
+    // 权限检查：只有管理员可以创建项目
+    if (req.user?.role !== 'ADMIN') {
+      return res.status(403).json({ error: '只有管理员可以创建项目' });
+    }
+
     const data = createProjectSchema.parse(req.body);
 
     const project = await prisma.project.create({
@@ -164,11 +163,16 @@ router.post('/', async (req: AuthRequest, res) => {
   }
 });
 
-// 更新项目
+// 更新项目（只有管理员可以）
 router.put('/:id', async (req: AuthRequest, res) => {
   try {
     const { id } = req.params;
     const data = updateProjectSchema.parse(req.body);
+
+    // 权限检查：只有管理员可以更新项目
+    if (req.user?.role !== 'ADMIN') {
+      return res.status(403).json({ error: '只有管理员可以修改项目' });
+    }
 
     // 检查项目是否存在
     const existingProject = await prisma.project.findUnique({
@@ -177,11 +181,6 @@ router.put('/:id', async (req: AuthRequest, res) => {
 
     if (!existingProject) {
       return res.status(404).json({ error: '项目不存在' });
-    }
-
-    // 权限检查
-    if (req.user?.role !== 'ADMIN' && existingProject.creatorId !== req.user!.id) {
-      return res.status(403).json({ error: '无权修改此项目' });
     }
 
     const updateData: any = { ...data };
@@ -211,10 +210,15 @@ router.put('/:id', async (req: AuthRequest, res) => {
   }
 });
 
-// 删除项目
+// 删除项目（只有管理员可以）
 router.delete('/:id', async (req: AuthRequest, res) => {
   try {
     const { id } = req.params;
+
+    // 权限检查：只有管理员可以删除项目
+    if (req.user?.role !== 'ADMIN') {
+      return res.status(403).json({ error: '只有管理员可以删除项目' });
+    }
 
     const existingProject = await prisma.project.findUnique({
       where: { id },
@@ -222,11 +226,6 @@ router.delete('/:id', async (req: AuthRequest, res) => {
 
     if (!existingProject) {
       return res.status(404).json({ error: '项目不存在' });
-    }
-
-    // 权限检查
-    if (req.user?.role !== 'ADMIN' && existingProject.creatorId !== req.user!.id) {
-      return res.status(403).json({ error: '无权删除此项目' });
     }
 
     await prisma.project.delete({
@@ -239,11 +238,16 @@ router.delete('/:id', async (req: AuthRequest, res) => {
   }
 });
 
-// 项目排序操作（上移/下移/置顶）
+// 项目排序操作（上移/下移/置顶，只有管理员可以）
 router.post('/:id/sort', async (req: AuthRequest, res) => {
   try {
     const { id } = req.params;
     const { action } = req.body; // 'moveUp' | 'moveDown' | 'pinToTop'
+
+    // 权限检查：只有管理员可以排序项目
+    if (req.user?.role !== 'ADMIN') {
+      return res.status(403).json({ error: '只有管理员可以排序项目' });
+    }
 
     if (!['moveUp', 'moveDown', 'pinToTop'].includes(action)) {
       return res.status(400).json({ error: '无效的排序操作' });
@@ -258,19 +262,8 @@ router.post('/:id/sort', async (req: AuthRequest, res) => {
       return res.status(404).json({ error: '项目不存在' });
     }
 
-    // 权限检查
-    if (req.user?.role !== 'ADMIN' && currentProject.creatorId !== req.user!.id) {
-      return res.status(403).json({ error: '无权修改此项目' });
-    }
-
     // 获取所有项目（按当前排序）
-    const where: any = {};
-    if (req.user?.role !== 'ADMIN') {
-      where.creatorId = req.user!.id;
-    }
-
     const allProjects = await prisma.project.findMany({
-      where,
       orderBy: { sortOrder: 'asc' },
     });
 

@@ -8,9 +8,27 @@ import { AuthRequest } from '../types';
 const router = Router();
 router.use(authenticate);
 
-// 获取所有用户（管理员可见）
+// 获取用户列表（管理员可见所有用户，非管理员只能看到自己）
 router.get('/', async (req: AuthRequest, res) => {
   try {
+    // 非管理员只能查询自己
+    if (req.user?.role !== 'ADMIN') {
+      const user = await prisma.user.findUnique({
+        where: { id: req.user!.id },
+        select: {
+          id: true,
+          username: true,
+          name: true,
+          email: true,
+          role: true,
+          avatar: true,
+          createdAt: true,
+        },
+      });
+      return res.json([user]); // 返回数组格式保持一致
+    }
+
+    // 管理员查询所有用户
     const users = await prisma.user.findMany({
       select: {
         id: true,
