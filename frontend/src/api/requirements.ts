@@ -21,6 +21,8 @@ export const createRequirement = (data: {
   priority?: string
   projectId: string
   assigneeId?: string
+  assigneeIds?: string[]
+  parentId?: string
   estimatedHours?: number
 }) => {
   return request.post<any, Requirement>('/requirements', data)

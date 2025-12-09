@@ -30,11 +30,6 @@
           <span>任务</span>
         </el-menu-item>
 
-        <el-menu-item index="/kanban">
-          <el-icon><Grid /></el-icon>
-          <span>任务看板</span>
-        </el-menu-item>
-
         <el-menu-item v-if="authStore.isAdmin()" index="/users">
           <el-icon><User /></el-icon>
           <span>用户管理</span>
@@ -145,7 +140,6 @@ const breadcrumbs = computed(() => {
     '/projects': '项目',
     '/requirements': '需求',
     '/tasks': '任务',
-    '/kanban': '任务看板',
     '/users': '用户管理'
   }
   return [map[route.path] || '首页']

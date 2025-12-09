@@ -31,7 +31,10 @@ export const createTask = (data: {
   projectId: string
   requirementId?: string
   assigneeId?: string
+  assigneeIds?: string[]
+  parentId?: string
   estimatedHours?: number
+  actualHours?: number
   startDate?: string
   dueDate?: string
 }) => {
