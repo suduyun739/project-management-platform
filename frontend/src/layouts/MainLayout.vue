@@ -17,12 +17,7 @@
 
         <el-menu-item index="/projects">
           <el-icon><Folder /></el-icon>
-          <span>项目</span>
-        </el-menu-item>
-
-        <el-menu-item index="/requirements">
-          <el-icon><Document /></el-icon>
-          <span>需求</span>
+          <span>项目与需求</span>
         </el-menu-item>
 
         <el-menu-item index="/tasks">
@@ -137,8 +132,7 @@ const activeMenu = computed(() => route.path)
 const breadcrumbs = computed(() => {
   const map: Record<string, string> = {
     '/dashboard': '数据看板',
-    '/projects': '项目',
-    '/requirements': '需求',
+    '/projects': '项目与需求',
     '/tasks': '任务',
     '/users': '用户管理'
   }
