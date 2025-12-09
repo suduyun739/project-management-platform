@@ -1,80 +1,178 @@
 # 项目管理平台
 
-轻量级项目管理工具，适合小型团队使用。
+一个功能完善的项目管理系统，支持项目、需求、任务的全生命周期管理，具备完整的权限控制和数据隔离机制。
 
 ## 功能特性
 
-- ✅ 用户认证和权限管理（管理员/普通成员）
-- ✅ 项目管理
-- ✅ 需求管理
-- ✅ 任务管理
-- ✅ 看板视图
-- ✅ 强大的筛选功能
-- ✅ 数据权限隔离
+### 核心功能
+
+- **项目管理**：创建、编辑、删除项目，支持项目状态跟踪和排序
+- **需求管理**：支持多级需求（父需求-子需求），完整的状态流转
+- **任务管理**：任务创建、分配、跟踪，支持子任务和看板视图
+- **看板视图**：拖拽式任务状态管理，直观的可视化展示
+- **数据统计**：项目维度和个人维度的数据统计分析
+
+### 权限与安全
+
+- **双角色体系**：管理员和普通成员，权限分明
+- **数据隔离**：普通成员只能查看和管理自己负责的内容
+- **多负责人机制**：支持多人协同，所有负责人权限平等
+- **JWT认证**：安全的token认证机制
+- **密码加密**：使用bcrypt加密存储
+
+### 用户体验
+
+- **树形结构**：项目-需求-任务的层级展示
+- **行内编辑**：快速修改状态、优先级等字段
+- **智能筛选**：多维度组合筛选，快速定位目标
+- **展开/折叠**：一键控制树形结构的显示层级
+- **响应式设计**：适配各种屏幕尺寸
 
 ## 技术栈
 
-- **前端**: Vue 3 + Element Plus + Pinia
-- **后端**: Node.js + Express + Prisma
-- **数据库**: PostgreSQL
-- **部署**: Docker Compose
+### 前端
+
+- Vue 3 + TypeScript
+- Element Plus UI组件库
+- Pinia 状态管理
+- Vue Router 路由管理
+- Axios HTTP客户端
+- Vite 构建工具
+
+### 后端
+
+- Node.js + Express
+- TypeScript
+- Prisma ORM
+- PostgreSQL数据库
+- JWT认证
+- bcrypt密码加密
+- Zod数据验证
+
+### 部署
+
+- Docker + Docker Compose
+- Nginx（生产环境）
+- PM2（进程管理）
 
 ## 快速开始
 
-### 开发环境
+### 环境要求
+
+- Node.js 18+
+- PostgreSQL 14+
+- Docker & Docker Compose（推荐）
+
+### Docker Compose部署（推荐）
 
 ```bash
-# 安装依赖
-npm install
+# 克隆项目
+git clone https://github.com/suduyun739/project-management-platform.git
+cd project-management-platform
 
-# 启动后端服务（端口 3000）
-npm run dev:backend
+# 配置环境变量
+cd backend
+cp .env.example .env
+# 编辑 .env 文件
 
-# 启动前端服务（端口 5173）
-npm run dev:frontend
-```
-
-### 生产部署
-
-```bash
-# 使用 Docker Compose 部署
+# 启动所有服务
+cd ..
 docker-compose up -d
 
-# 查看服务状态
-docker-compose ps
-
-# 查看日志
-docker-compose logs -f
-
-# 停止服务
-docker-compose down
+# 初始化数据库
+docker-compose exec backend npx prisma migrate deploy
+docker-compose exec backend npx prisma db seed
 ```
 
-访问地址：http://your-server-ip:80
+服务将在以下端口启动：
+- 前端：http://localhost:5173
+- 后端：http://localhost:3000
+- 数据库：localhost:5432
 
-默认管理员账号：
-- 用户名: admin
-- 密码: admin123
+### 默认账号
 
-**首次登录后请立即修改密码！**
+- 用户名：`admin`
+- 密码：`admin123`
 
-## 服务器要求
+**重要**：首次登录后请立即修改密码！
 
-- 2核2G内存（最低配置）
-- 50G 存储空间
-- Ubuntu 20.04+
-- Docker & Docker Compose
+## 文档
 
-## 目录结构
+- [部署指南](DEPLOYMENT.md) - 详细的部署和更新说明
+- [用户指南](USER_GUIDE.md) - 功能使用说明
+- [技术架构](TECH_STACK.md) - 技术栈和架构设计
+- [API文档](API_DOCS.md) - RESTful API接口文档
+
+## 项目结构
 
 ```
-.
-├── backend/          # 后端服务
-├── frontend/         # 前端应用
-├── docker-compose.yml
-└── README.md
+project-management-platform/
+├── frontend/           # Vue 3 前端项目
+│   ├── public/        # 静态资源
+│   ├── src/
+│   │   ├── api/      # API接口
+│   │   ├── components/ # 公共组件
+│   │   ├── router/   # 路由配置
+│   │   ├── stores/   # Pinia状态管理
+│   │   ├── types/    # TypeScript类型
+│   │   ├── utils/    # 工具函数
+│   │   └── views/    # 页面组件
+│   └── ...
+├── backend/           # Node.js 后端项目
+│   ├── prisma/       # 数据库模型和迁移
+│   ├── src/
+│   │   ├── middleware/ # 中间件
+│   │   ├── routes/   # API路由
+│   │   ├── types/    # TypeScript类型
+│   │   └── utils/    # 工具函数
+│   └── ...
+├── docker-compose.yml # Docker编排配置
+└── README.md         # 本文件
 ```
 
-## 使用说明
+## 权限说明
 
-详细使用文档请查看 [使用指南](./USAGE.md)
+### 管理员权限
+
+✅ 查看所有数据
+✅ 管理项目（创建、编辑、删除、排序）
+✅ 管理需求（创建、编辑、删除）
+✅ 管理任务（创建、编辑、删除）
+✅ 管理用户（创建、编辑、删除、重置密码）
+✅ 查看全局统计
+
+### 普通用户权限
+
+✅ 查看所有项目（只读）
+✅ 查看自己负责的需求和任务
+✅ 创建需求和任务（自动成为负责人）
+✅ 编辑自己负责的需求和任务
+✅ 查看个人统计数据
+❌ 不能删除任何内容
+❌ 不能编辑项目
+❌ 不能管理其他用户
+
+## 更新日志
+
+### v1.0.0 (2025-01-01)
+
+- ✅ 完整的项目、需求、任务管理功能
+- ✅ 权限控制和数据隔离
+- ✅ 多负责人机制
+- ✅ 看板视图
+- ✅ 数据统计
+- ✅ 用户管理
+- ✅ Docker一键部署
+- ✅ 完整的API文档
+
+## 开发团队
+
+由 Claude Code 辅助开发完成。
+
+## 许可证
+
+MIT License
+
+## 技术支持
+
+如有问题，请提交 Issue 到项目仓库。
