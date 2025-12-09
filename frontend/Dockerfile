@@ -1,7 +1,8 @@
 FROM node:18-alpine as builder
 
-# 配置 Alpine 国内镜像源（阿里云）
-RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories
+# 配置 Alpine 国内镜像源（使用清华源，更稳定）
+RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.tuna.tsinghua.edu.cn/g' /etc/apk/repositories && \
+    apk update
 
 WORKDIR /app
 
