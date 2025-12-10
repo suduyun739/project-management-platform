@@ -4,7 +4,7 @@
       <template #header>
         <div class="card-header">
           <span>需求与任务</span>
-          <el-button type="primary" @click="showCreateDialog">
+          <el-button type="primary" @click="showCreateDialog" :disabled="!currentProjectId">
             <el-icon><Plus /></el-icon>
             新建任务
           </el-button>
@@ -243,10 +243,21 @@
           />
         </el-form-item>
 
+        <el-form-item label="所属项目" prop="projectId">
+          <el-select v-model="form.projectId" style="width: 100%" @change="handleFormProjectChange">
+            <el-option
+              v-for="p in projectOptions"
+              :key="p.id"
+              :label="p.name"
+              :value="p.id"
+            />
+          </el-select>
+        </el-form-item>
+
         <el-form-item label="关联需求" v-if="!form.parentId">
           <el-select v-model="form.requirementId" style="width: 100%" clearable placeholder="选择需求（可选）">
             <el-option
-              v-for="r in requirementOptions"
+              v-for="r in filteredRequirementOptions"
               :key="r.id"
               :label="r.title"
               :value="r.id"
@@ -374,6 +385,7 @@ const form = reactive<any>({
   id: '',
   title: '',
   description: '',
+  projectId: '',
   requirementId: '',
   priority: 'MEDIUM',
   status: 'TODO',
@@ -389,6 +401,7 @@ const rules: FormRules = {
     { required: true, message: '请输入任务标题', trigger: 'blur' },
     { min: 2, max: 200, message: '标题长度在 2 到 200 个字符', trigger: 'blur' }
   ],
+  projectId: [{ required: true, message: '请选择所属项目', trigger: 'change' }],
   priority: [{ required: true, message: '请选择优先级', trigger: 'change' }]
 }
 
@@ -402,6 +415,12 @@ const dialogTitle = computed(() => {
 // 父任务标题
 const parentTaskTitle = computed(() => {
   return parentTask.value?.title || ''
+})
+
+// 根据选中的项目过滤需求列表
+const filteredRequirementOptions = computed(() => {
+  if (!form.projectId) return []
+  return requirementOptions.value.filter(r => r.projectId === form.projectId)
 })
 
 /**
@@ -624,12 +643,21 @@ const handleFilter = async () => {
 }
 
 /**
+ * 表单项目变更处理（清空需求选择）
+ */
+const handleFormProjectChange = () => {
+  form.requirementId = ''
+}
+
+/**
  * 显示创建对话框
  */
 const showCreateDialog = () => {
   isEdit.value = false
   parentTask.value = null
   resetFormData()
+  // 自动关联当前筛选的项目
+  form.projectId = currentProjectId.value
   dialogVisible.value = true
 }
 
@@ -641,6 +669,10 @@ const showCreateChildDialog = (parent: Task) => {
   parentTask.value = parent
   resetFormData()
   form.parentId = parent.id
+  // 子任务继承父任务的项目
+  form.projectId = parent.projectId
+  // 子任务继承父任务的需求
+  form.requirementId = parent.requirementId || ''
   dialogVisible.value = true
 }
 
@@ -652,6 +684,7 @@ const resetFormData = () => {
     id: '',
     title: '',
     description: '',
+    projectId: '',
     requirementId: '',
     priority: 'MEDIUM',
     status: 'TODO',
@@ -682,6 +715,7 @@ const handleEdit = (row: Task) => {
     id: row.id,
     title: row.title,
     description: row.description || '',
+    projectId: row.projectId || '',
     requirementId: row.requirementId || '',
     priority: row.priority,
     status: row.status,
@@ -714,7 +748,7 @@ const handleSubmit = async () => {
       const data: any = {
         title: form.title,
         description: form.description,
-        projectId: currentProjectId.value,
+        projectId: form.projectId,
         requirementId: form.requirementId || undefined,
         priority: form.priority,
         status: form.status,
