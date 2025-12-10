@@ -258,16 +258,25 @@
                 style="width: 100%"
               />
             </div>
-            <!-- 需求预估工时 -->
-            <div v-else>
-              <el-input-number
-                v-model="row.estimatedHours"
-                @change="handleRequirementEstimatedHoursChange(row)"
-                :min="0"
-                :step="0.5"
-                :precision="1"
+            <!-- 需求时间（三行显示） -->
+            <div v-else class="time-cell">
+              <el-date-picker
+                v-model="row.startDate"
+                type="date"
                 size="small"
-                controls-position="right"
+                placeholder="开始日期"
+                @change="handleRequirementDateChange(row, 'startDate')"
+                value-format="YYYY-MM-DD"
+                style="width: 100%"
+              />
+              <div class="time-divider">|</div>
+              <el-date-picker
+                v-model="row.endDate"
+                type="date"
+                size="small"
+                placeholder="结束日期"
+                @change="handleRequirementDateChange(row, 'endDate')"
+                value-format="YYYY-MM-DD"
                 style="width: 100%"
               />
             </div>
@@ -277,6 +286,7 @@
         <!-- 进度统计列 -->
         <el-table-column label="进度" width="200">
           <template #default="{ row }">
+            <!-- 项目进度 -->
             <div v-if="row.isProject" class="progress-cell">
               <div class="progress-item">
                 <span class="progress-label">需求:</span>
@@ -295,7 +305,21 @@
                 />
               </div>
             </div>
-            <span v-else>-</span>
+            <!-- 需求预估工时 -->
+            <div v-else class="workload-cell">
+              <span class="workload-label">预估工时:</span>
+              <el-input-number
+                v-model="row.estimatedHours"
+                @change="handleRequirementEstimatedHoursChange(row)"
+                :min="0"
+                :step="0.5"
+                :precision="1"
+                size="small"
+                controls-position="right"
+                style="width: 100px"
+              />
+              <span class="workload-unit">天</span>
+            </div>
           </template>
         </el-table-column>
 
@@ -488,6 +512,26 @@
           </el-select>
         </el-form-item>
 
+        <el-form-item label="开始日期">
+          <el-date-picker
+            v-model="requirementForm.startDate"
+            type="date"
+            placeholder="选择开始日期"
+            style="width: 100%"
+            value-format="YYYY-MM-DD"
+          />
+        </el-form-item>
+
+        <el-form-item label="结束日期">
+          <el-date-picker
+            v-model="requirementForm.endDate"
+            type="date"
+            placeholder="选择结束日期"
+            style="width: 100%"
+            value-format="YYYY-MM-DD"
+          />
+        </el-form-item>
+
         <el-form-item label="预估工时(天)">
           <el-input-number
             v-model="requirementForm.estimatedHours"
@@ -558,6 +602,8 @@ const requirementForm = reactive<any>({
   status: 'PENDING',
   assigneeIds: [],
   estimatedHours: 1,
+  startDate: null,
+  endDate: null,
   parentId: ''
 })
 
@@ -1079,6 +1125,8 @@ const handleEditRequirement = (row: Requirement) => {
     status: row.status,
     assigneeIds: row.assignees?.map(a => a.userId || a.user?.id).filter(Boolean) || [],
     estimatedHours: row.estimatedHours || 0,
+    startDate: row.startDate || null,
+    endDate: row.endDate || null,
     parentId: row.parentId || ''
   })
 
@@ -1108,7 +1156,9 @@ const handleRequirementSubmit = async () => {
         priority: requirementForm.priority,
         status: requirementForm.status,
         assigneeIds: requirementForm.assigneeIds.length > 0 ? requirementForm.assigneeIds : undefined,
-        estimatedHours: requirementForm.estimatedHours || 0
+        estimatedHours: requirementForm.estimatedHours || 0,
+        startDate: requirementForm.startDate || undefined,
+        endDate: requirementForm.endDate || undefined
       }
 
       // 如果是子需求，添加 parentId
@@ -1209,6 +1259,15 @@ const handleRequirementEstimatedHoursChange = async (row: Requirement) => {
 }
 
 /**
+ * 需求日期行内编辑
+ */
+const handleRequirementDateChange = async (row: Requirement, field: 'startDate' | 'endDate') => {
+  const value = row[field] || undefined
+  const message = field === 'startDate' ? '开始日期更新成功' : '结束日期更新成功'
+  await updateRequirementInline(row, { [field]: value }, message)
+}
+
+/**
  * 重置需求表单
  */
 const resetRequirementForm = () => {
@@ -1294,6 +1353,24 @@ onMounted(async () => {
   font-size: 12px;
   color: #606266;
   min-width: 40px;
+}
+
+.workload-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.workload-label {
+  font-size: 12px;
+  color: #606266;
+  white-space: nowrap;
+}
+
+.workload-unit {
+  font-size: 12px;
+  color: #909399;
+  margin-left: 4px;
 }
 
 .form-hint {
