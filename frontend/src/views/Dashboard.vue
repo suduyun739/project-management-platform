@@ -121,11 +121,17 @@
         </el-card>
       </el-col>
 
-      <!-- 优先级分布 -->
+      <!-- 任务优先级分布 -->
       <el-col :xs="24" :sm="12" :lg="8">
         <el-card class="chart-card">
           <template #header>
-            <span>优先级分布</span>
+            <div class="chart-header">
+              <span>任务优先级分布</span>
+              <el-radio-group v-model="priorityFilterType" size="small" @change="updatePriorityBarChart">
+                <el-radio-button label="incomplete">未完成</el-radio-button>
+                <el-radio-button label="completed">已完成</el-radio-button>
+              </el-radio-group>
+            </div>
           </template>
           <div ref="priorityBarRef" class="chart-container"></div>
         </el-card>
@@ -206,6 +212,7 @@ const selectedProjectId = ref('')
 const dateRange = ref<[Date, Date] | null>(null)
 const projectOptions = ref<Project[]>([])
 const detailType = ref<'requirements' | 'tasks'>('requirements')
+const priorityFilterType = ref<'incomplete' | 'completed'>('incomplete')
 
 // 图表引用
 const requirementPieRef = ref<HTMLElement>()
@@ -230,8 +237,7 @@ const stats = reactive({
   doneTasks: 0,
   totalEstimatedHours: 0,
   requirementsByStatus: {} as Record<string, number>,
-  tasksByStatus: {} as Record<string, number>,
-  priorityDistribution: {} as Record<string, number>
+  tasksByStatus: {} as Record<string, number>
 })
 
 // 计算属性
@@ -341,12 +347,6 @@ const calculateStats = () => {
     (tasks.value.reduce((sum, t) => sum + (t.estimatedHours || 0), 0) +
      requirementsWithoutTasks.reduce((sum, r) => sum + (r.estimatedHours || 0), 0)) * 10
   ) / 10
-
-  // 优先级统计
-  stats.priorityDistribution = [...requirements.value, ...tasks.value].reduce((acc, item) => {
-    acc[item.priority] = (acc[item.priority] || 0) + 1
-    return acc
-  }, {} as Record<string, number>)
 }
 
 // 更新所有图表
@@ -490,13 +490,24 @@ const updateTaskPieChart = () => {
   })
 }
 
-// 优先级柱状图
+// 任务优先级柱状图
 const updatePriorityBarChart = () => {
   if (!priorityBarRef.value) return
 
   if (!priorityBarChart) {
     priorityBarChart = echarts.init(priorityBarRef.value)
   }
+
+  // 根据筛选条件过滤任务
+  const filteredTasks = priorityFilterType.value === 'completed'
+    ? tasks.value.filter(t => t.status === 'DONE')
+    : tasks.value.filter(t => t.status !== 'DONE')
+
+  // 统计优先级分布（仅任务）
+  const priorityDistribution = filteredTasks.reduce((acc, t) => {
+    acc[t.priority] = (acc[t.priority] || 0) + 1
+    return acc
+  }, {} as Record<string, number>)
 
   const priorityLabels: Record<string, string> = {
     LOW: '低',
@@ -528,7 +539,7 @@ const updatePriorityBarChart = () => {
       {
         type: 'bar',
         data: ['LOW', 'MEDIUM', 'HIGH', 'URGENT'].map(p => ({
-          value: stats.priorityDistribution[p] || 0,
+          value: priorityDistribution[p] || 0,
           itemStyle: { color: priorityColors[p] }
         })),
         barWidth: '60%'
