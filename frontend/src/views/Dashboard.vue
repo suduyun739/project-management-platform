@@ -136,19 +136,9 @@
           <div ref="priorityBarRef" class="chart-container"></div>
         </el-card>
       </el-col>
-
-      <!-- 项目完成情况对比 -->
-      <el-col :xs="24">
-        <el-card class="chart-card">
-          <template #header>
-            <span>项目完成情况对比</span>
-          </template>
-          <div ref="projectComparisonRef" class="chart-container-large"></div>
-        </el-card>
-      </el-col>
     </el-row>
 
-    <!-- 详细数据表格 -->
+    <!-- 状态明细 -->
     <el-card class="table-card">
       <template #header>
         <div class="chart-header">
@@ -191,6 +181,18 @@
         </el-table-column>
       </el-table>
     </el-card>
+
+    <!-- 项目完成情况对比 -->
+    <el-row :gutter="16">
+      <el-col :xs="24">
+        <el-card class="chart-card">
+          <template #header>
+            <span>项目完成情况对比</span>
+          </template>
+          <div ref="projectComparisonRef" class="chart-container-large"></div>
+        </el-card>
+      </el-col>
+    </el-row>
   </div>
 </template>
 
@@ -533,7 +535,8 @@ const updatePriorityBarChart = () => {
       data: ['低', '中', '高', '紧急']
     },
     yAxis: {
-      type: 'value'
+      type: 'value',
+      minInterval: 1
     },
     series: [
       {
@@ -600,7 +603,8 @@ const updateProjectComparisonChart = () => {
       data: projectNames
     },
     yAxis: {
-      type: 'value'
+      type: 'value',
+      minInterval: 1
     },
     series: [
       {
@@ -645,7 +649,9 @@ const navigateToDetail = (type: string, status: string) => {
   if (selectedProjectId.value) {
     query.projectId = selectedProjectId.value
   }
-  router.push({ path: `/${type}`, query })
+  // 需求跳转到 projects 页面，任务跳转到 tasks 页面
+  const path = type === 'requirements' ? '/projects' : '/tasks'
+  router.push({ path, query })
 }
 
 const updateDetailTable = () => {
