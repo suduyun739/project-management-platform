@@ -228,7 +228,7 @@
     <!-- 创建/编辑对话框 -->
     <el-dialog v-model="dialogVisible" :title="dialogTitle" width="650px" @closed="resetForm">
       <el-form ref="formRef" :model="form" :rules="rules" label-width="110px">
-        <el-form-item label="任务标题" prop="title">
+        <el-form-item label="任务标题" prop="title" required>
           <el-input v-model="form.title" placeholder="输入任务标题" maxlength="200" show-word-limit />
         </el-form-item>
 
@@ -237,13 +237,13 @@
             v-model="form.description"
             type="textarea"
             :rows="4"
-            placeholder="详细描述任务内容"
+            placeholder="选填，详细描述任务内容"
             maxlength="2000"
             show-word-limit
           />
         </el-form-item>
 
-        <el-form-item label="所属项目" prop="projectId">
+        <el-form-item label="所属项目" prop="projectId" required>
           <el-select v-model="form.projectId" style="width: 100%" @change="handleFormProjectChange">
             <el-option
               v-for="p in projectOptions"
@@ -255,7 +255,7 @@
         </el-form-item>
 
         <el-form-item label="关联需求" v-if="!form.parentId">
-          <el-select v-model="form.requirementId" style="width: 100%" clearable placeholder="选择需求（可选）">
+          <el-select v-model="form.requirementId" style="width: 100%" clearable placeholder="选填，可关联到具体需求">
             <el-option
               v-for="r in filteredRequirementOptions"
               :key="r.id"
@@ -269,7 +269,7 @@
           <el-input :value="parentTaskTitle" disabled />
         </el-form-item>
 
-        <el-form-item label="优先级" prop="priority">
+        <el-form-item label="优先级" prop="priority" required>
           <el-select v-model="form.priority" style="width: 100%">
             <el-option label="低" value="LOW" />
             <el-option label="中" value="MEDIUM" />

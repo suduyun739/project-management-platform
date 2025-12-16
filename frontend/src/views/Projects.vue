@@ -380,7 +380,7 @@
         :rules="projectRules"
         label-width="100px"
       >
-        <el-form-item label="项目名称" prop="name">
+        <el-form-item label="项目名称" prop="name" required>
           <el-input v-model="projectForm.name" placeholder="请输入项目名称" />
         </el-form-item>
         <el-form-item label="项目描述">
@@ -388,7 +388,7 @@
             v-model="projectForm.description"
             type="textarea"
             :rows="3"
-            placeholder="请输入项目描述"
+            placeholder="选填，可以简要描述项目"
           />
         </el-form-item>
         <el-form-item label="项目状态" prop="status" v-if="isEditProject">
@@ -410,18 +410,20 @@
           <el-date-picker
             v-model="projectForm.startDate"
             type="date"
-            placeholder="选择开始日期"
+            placeholder="选填，项目开始日期"
             style="width: 100%"
             value-format="YYYY-MM-DD"
+            clearable
           />
         </el-form-item>
         <el-form-item label="结束日期">
           <el-date-picker
             v-model="projectForm.endDate"
             type="date"
-            placeholder="选择结束日期"
+            placeholder="选填，项目结束日期"
             style="width: 100%"
             value-format="YYYY-MM-DD"
+            clearable
           />
         </el-form-item>
       </el-form>
@@ -445,7 +447,7 @@
         :rules="requirementRules"
         label-width="110px"
       >
-        <el-form-item label="需求标题" prop="title">
+        <el-form-item label="需求标题" prop="title" required>
           <el-input v-model="requirementForm.title" placeholder="输入需求标题" maxlength="200" show-word-limit />
         </el-form-item>
 
@@ -460,7 +462,7 @@
           />
         </el-form-item>
 
-        <el-form-item label="所属项目" prop="projectId" v-if="!requirementForm.parentId">
+        <el-form-item label="所属项目" prop="projectId" v-if="!requirementForm.parentId" required>
           <el-select v-model="requirementForm.projectId" style="width: 100%" placeholder="选择项目">
             <el-option v-for="p in projectOptions" :key="p.id" :label="p.name" :value="p.id" />
           </el-select>
@@ -481,7 +483,7 @@
           </el-select>
         </el-form-item>
 
-        <el-form-item label="优先级" prop="priority">
+        <el-form-item label="优先级" prop="priority" required>
           <el-select v-model="requirementForm.priority" style="width: 100%">
             <el-option label="低" value="LOW" />
             <el-option label="中" value="MEDIUM" />
