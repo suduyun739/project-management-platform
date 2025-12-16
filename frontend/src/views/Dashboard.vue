@@ -74,9 +74,6 @@
         <div class="stat-content">
           <div class="stat-label">预估工时(天)</div>
           <div class="stat-value">{{ stats.totalEstimatedHours }}</div>
-          <div class="stat-progress">
-            <span>实际: {{ stats.totalActualHours }}天</span>
-          </div>
         </div>
       </el-card>
 
@@ -135,22 +132,12 @@
       </el-col>
 
       <!-- 项目完成情况对比 -->
-      <el-col :xs="24" :lg="16">
+      <el-col :xs="24">
         <el-card class="chart-card">
           <template #header>
             <span>项目完成情况对比</span>
           </template>
           <div ref="projectComparisonRef" class="chart-container-large"></div>
-        </el-card>
-      </el-col>
-
-      <!-- 工时统计 -->
-      <el-col :xs="24" :lg="8">
-        <el-card class="chart-card">
-          <template #header>
-            <span>工时统计(天)</span>
-          </template>
-          <div ref="hoursGaugeRef" class="chart-container"></div>
         </el-card>
       </el-col>
     </el-row>
@@ -225,13 +212,11 @@ const requirementPieRef = ref<HTMLElement>()
 const taskPieRef = ref<HTMLElement>()
 const priorityBarRef = ref<HTMLElement>()
 const projectComparisonRef = ref<HTMLElement>()
-const hoursGaugeRef = ref<HTMLElement>()
 
 let requirementPieChart: ECharts | null = null
 let taskPieChart: ECharts | null = null
 let priorityBarChart: ECharts | null = null
 let projectComparisonChart: ECharts | null = null
-let hoursGaugeChart: ECharts | null = null
 
 // 原始数据
 const requirements = ref<Requirement[]>([])
@@ -244,7 +229,6 @@ const stats = reactive({
   totalTasks: 0,
   doneTasks: 0,
   totalEstimatedHours: 0,
-  totalActualHours: 0,
   requirementsByStatus: {} as Record<string, number>,
   tasksByStatus: {} as Record<string, number>,
   priorityDistribution: {} as Record<string, number>
@@ -349,15 +333,13 @@ const calculateStats = () => {
     return acc
   }, {} as Record<string, number>)
 
-  // 工时统计
+  // 工时统计：只统计任务的预估工时；如果需求下没有任务，则使用需求的预估工时
+  const requirementsWithTasks = new Set(tasks.value.map(t => t.requirementId).filter(Boolean))
+  const requirementsWithoutTasks = requirements.value.filter(r => !requirementsWithTasks.has(r.id))
+
   stats.totalEstimatedHours = Math.round(
-    [...requirements.value, ...tasks.value].reduce(
-      (sum, item) => sum + (item.estimatedHours || 0),
-      0
-    ) * 10
-  ) / 10
-  stats.totalActualHours = Math.round(
-    tasks.value.reduce((sum, t) => sum + (t.actualHours || 0), 0) * 10
+    (tasks.value.reduce((sum, t) => sum + (t.estimatedHours || 0), 0) +
+     requirementsWithoutTasks.reduce((sum, r) => sum + (r.estimatedHours || 0), 0)) * 10
   ) / 10
 
   // 优先级统计
@@ -373,7 +355,6 @@ const updateCharts = () => {
   updateTaskPieChart()
   updatePriorityBarChart()
   updateProjectComparisonChart()
-  updateHoursGaugeChart()
 }
 
 // 需求状态饼图
@@ -639,80 +620,6 @@ const updateProjectComparisonChart = () => {
   })
 }
 
-// 工时仪表盘
-const updateHoursGaugeChart = () => {
-  if (!hoursGaugeRef.value) return
-
-  if (!hoursGaugeChart) {
-    hoursGaugeChart = echarts.init(hoursGaugeRef.value)
-  }
-
-  const completionRate = stats.totalEstimatedHours > 0
-    ? Math.round((stats.totalActualHours / stats.totalEstimatedHours) * 100)
-    : 0
-
-  hoursGaugeChart.setOption({
-    series: [
-      {
-        type: 'gauge',
-        startAngle: 180,
-        endAngle: 0,
-        min: 0,
-        max: 100,
-        splitNumber: 10,
-        axisLine: {
-          lineStyle: {
-            width: 20,
-            color: [
-              [0.3, '#67c23a'],
-              [0.7, '#409eff'],
-              [1, '#f56c6c']
-            ]
-          }
-        },
-        pointer: {
-          itemStyle: {
-            color: 'auto'
-          }
-        },
-        axisTick: {
-          distance: -20,
-          length: 5,
-          lineStyle: {
-            color: '#fff',
-            width: 2
-          }
-        },
-        splitLine: {
-          distance: -20,
-          length: 20,
-          lineStyle: {
-            color: '#fff',
-            width: 4
-          }
-        },
-        axisLabel: {
-          color: 'inherit',
-          distance: 25,
-          fontSize: 12
-        },
-        detail: {
-          valueAnimation: true,
-          formatter: '{value}%',
-          color: 'inherit',
-          fontSize: 20
-        },
-        data: [
-          {
-            value: completionRate,
-            name: '工时完成率'
-          }
-        ]
-      }
-    ]
-  })
-}
-
 // 导航函数
 const navigateTo = (type: string) => {
   const query: any = {}
@@ -760,7 +667,6 @@ const handleResize = () => {
   taskPieChart?.resize()
   priorityBarChart?.resize()
   projectComparisonChart?.resize()
-  hoursGaugeChart?.resize()
 }
 
 onMounted(async () => {
