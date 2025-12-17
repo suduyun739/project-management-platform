@@ -54,6 +54,7 @@
 - Docker + Docker Compose
 - Nginx（生产环境）
 - PM2（进程管理）
+- 自动数据库备份
 
 ## 快速开始
 
@@ -96,6 +97,73 @@ docker-compose exec backend npx prisma db seed
 
 **重要**：首次登录后请立即修改密码！
 
+## 数据备份与恢复
+
+系统集成了自动数据库备份功能，每天凌晨2点自动备份，保留最近30天的备份数据。
+
+### 自动备份
+
+备份服务已集成在 docker-compose.yml 中，启动服务后会自动运行：
+
+```bash
+# 备份文件存储位置
+./backups/
+
+# 查看备份日志
+docker logs pm_backup
+
+# 查看备份文件列表
+ls -lh backups/
+```
+
+### 手动备份
+
+```bash
+# 进入项目目录
+cd /path/to/project-management-platform
+
+# 执行备份脚本
+bash scripts/backup.sh
+
+# 备份文件将保存在 ./backups/ 目录
+# 格式：backup_YYYYMMDD_HHMMSS.sql.gz
+```
+
+### 恢复数据库
+
+```bash
+# 查看可用备份
+ls -lh backups/
+
+# 从备份恢复（需要确认）
+bash scripts/restore.sh backups/backup_20250117_020000.sql.gz
+
+# 恢复后重启后端服务
+docker-compose restart backend
+```
+
+### 备份策略
+
+- **自动备份时间**：每天凌晨 2:00
+- **备份保留期**：30天
+- **备份格式**：压缩的 SQL 文件（.sql.gz）
+- **存储位置**：./backups/ 目录
+
+### 数据迁移
+
+备份文件可用于数据迁移：
+
+```bash
+# 1. 在旧服务器上备份
+bash scripts/backup.sh
+
+# 2. 复制备份文件到新服务器
+scp backups/backup_*.sql.gz user@newserver:/path/to/project/backups/
+
+# 3. 在新服务器上恢复
+bash scripts/restore.sh backups/backup_*.sql.gz
+```
+
 ## 文档
 
 - [部署指南](DEPLOYMENT.md) - 详细的部署和更新说明
@@ -126,6 +194,11 @@ project-management-platform/
 │   │   ├── types/    # TypeScript类型
 │   │   └── utils/    # 工具函数
 │   └── ...
+├── scripts/           # 备份脚本
+│   ├── backup.sh     # 数据库备份脚本
+│   ├── restore.sh    # 数据库恢复脚本
+│   └── crontab       # 定时任务配置
+├── backups/          # 备份文件存储（自动创建）
 ├── docker-compose.yml # Docker编排配置
 └── README.md         # 本文件
 ```
@@ -153,6 +226,14 @@ project-management-platform/
 ❌ 不能管理其他用户
 
 ## 更新日志
+
+### v1.1.0 (2025-01-17)
+
+- ✅ 项目名称重名校验（创建和更新时）
+- ✅ 自动数据库备份功能（每日凌晨2点）
+- ✅ 手动备份和恢复脚本
+- ✅ 备份数据保留策略（30天）
+- ✅ 支持数据迁移
 
 ### v1.0.0 (2025-01-01)
 

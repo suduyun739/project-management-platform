@@ -1,0 +1,28 @@
+FROM alpine:3.18
+
+# 安装必要的工具
+RUN apk add --no-cache \
+    bash \
+    postgresql-client \
+    docker-cli \
+    tzdata
+
+# 设置时区为中国标准时间
+ENV TZ=Asia/Shanghai
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+
+# 创建工作目录
+WORKDIR /app
+
+# 复制备份脚本
+COPY scripts/backup.sh /app/scripts/backup.sh
+COPY scripts/crontab /etc/crontabs/root
+
+# 设置脚本执行权限
+RUN chmod +x /app/scripts/backup.sh
+
+# 创建备份目录
+RUN mkdir -p /app/backups
+
+# 启动 cron 服务
+CMD ["crond", "-f", "-l", "2"]

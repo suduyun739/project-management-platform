@@ -136,6 +136,15 @@ router.post('/', async (req: AuthRequest, res) => {
 
     const data = createProjectSchema.parse(req.body);
 
+    // 检查项目名称是否已存在
+    const existingProject = await prisma.project.findFirst({
+      where: { name: data.name },
+    });
+
+    if (existingProject) {
+      return res.status(400).json({ error: '项目名称已存在，请使用其他名称' });
+    }
+
     const project = await prisma.project.create({
       data: {
         ...data,
@@ -181,6 +190,20 @@ router.put('/:id', async (req: AuthRequest, res) => {
 
     if (!existingProject) {
       return res.status(404).json({ error: '项目不存在' });
+    }
+
+    // 如果修改了项目名称，检查新名称是否已被其他项目使用
+    if (data.name && data.name !== existingProject.name) {
+      const duplicateProject = await prisma.project.findFirst({
+        where: {
+          name: data.name,
+          id: { not: id },
+        },
+      });
+
+      if (duplicateProject) {
+        return res.status(400).json({ error: '项目名称已存在，请使用其他名称' });
+      }
     }
 
     const updateData: any = { ...data };
