@@ -749,13 +749,25 @@ const handleSubmit = async () => {
         title: form.title,
         description: form.description,
         projectId: form.projectId,
-        requirementId: form.requirementId || undefined,
         priority: form.priority,
         status: form.status,
-        assigneeIds: form.assigneeIds.length > 0 ? form.assigneeIds : undefined,
-        estimatedHours: form.estimatedHours || 0,
-        startDate: form.startDate || undefined,
-        dueDate: form.dueDate || undefined
+      }
+
+      // 只添加有值的可选字段
+      if (form.requirementId) {
+        data.requirementId = form.requirementId
+      }
+      if (form.assigneeIds && form.assigneeIds.length > 0) {
+        data.assigneeIds = form.assigneeIds
+      }
+      if (form.estimatedHours) {
+        data.estimatedHours = form.estimatedHours
+      }
+      if (form.startDate) {
+        data.startDate = form.startDate
+      }
+      if (form.dueDate) {
+        data.dueDate = form.dueDate
       }
 
       // 如果是子任务，添加 parentId

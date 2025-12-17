@@ -961,13 +961,19 @@ const handleProjectSubmit = async () => {
     if (!valid) return
 
     try {
-      const data = {
+      const data: any = {
         name: projectForm.name,
         description: projectForm.description,
         status: projectForm.status,
         priority: projectForm.priority,
-        startDate: projectForm.startDate,
-        endDate: projectForm.endDate
+      }
+
+      // 只有当日期有值时才添加到数据中
+      if (projectForm.startDate) {
+        data.startDate = projectForm.startDate
+      }
+      if (projectForm.endDate) {
+        data.endDate = projectForm.endDate
       }
 
       if (isEditProject.value) {
@@ -1157,10 +1163,20 @@ const handleRequirementSubmit = async () => {
         projectId: requirementForm.projectId,
         priority: requirementForm.priority,
         status: requirementForm.status,
-        assigneeIds: requirementForm.assigneeIds.length > 0 ? requirementForm.assigneeIds : undefined,
-        estimatedHours: requirementForm.estimatedHours || 0,
-        startDate: requirementForm.startDate || undefined,
-        endDate: requirementForm.endDate || undefined
+      }
+
+      // 只添加有值的可选字段
+      if (requirementForm.assigneeIds && requirementForm.assigneeIds.length > 0) {
+        data.assigneeIds = requirementForm.assigneeIds
+      }
+      if (requirementForm.estimatedHours) {
+        data.estimatedHours = requirementForm.estimatedHours
+      }
+      if (requirementForm.startDate) {
+        data.startDate = requirementForm.startDate
+      }
+      if (requirementForm.endDate) {
+        data.endDate = requirementForm.endDate
       }
 
       // 如果是子需求，添加 parentId
