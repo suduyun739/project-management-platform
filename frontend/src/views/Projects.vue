@@ -98,12 +98,13 @@
       <!-- 项目与需求树形列表 -->
       <el-table
         ref="tableRef"
-        :data="treeData"
+        :data="paginatedTreeData"
         v-loading="loading"
         style="margin-top: 20px"
         row-key="id"
         :tree-props="{ children: 'children', hasChildren: 'hasChildren' }"
         :default-expand-all="false"
+        :max-height="600"
         border
       >
         <!-- 名称/标题列 -->
@@ -366,6 +367,19 @@
           </template>
         </el-table-column>
       </el-table>
+
+      <!-- 分页 -->
+      <div class="pagination-container">
+        <el-pagination
+          v-model:current-page="pagination.currentPage"
+          v-model:page-size="pagination.pageSize"
+          :page-sizes="[10, 20, 50, 100]"
+          :total="totalProjects"
+          layout="total, sizes, prev, pager, next, jumper"
+          @size-change="handleSizeChange"
+          @current-change="handlePageChange"
+        />
+      </div>
     </el-card>
 
     <!-- 项目创建/编辑对话框 -->
@@ -619,6 +633,12 @@ const filters = reactive({
   requirementPriority: ''
 })
 
+// 分页配置
+const pagination = reactive({
+  currentPage: 1,
+  pageSize: 10
+})
+
 // 表单验证规则
 const projectRules: FormRules = {
   name: [{ required: true, message: '请输入项目名称', trigger: 'blur' }]
@@ -659,6 +679,18 @@ const availableParentRequirements = computed(() => {
 // 构建树形数据
 const treeData = computed(() => {
   return buildProjectTree()
+})
+
+// 项目总数（用于分页）
+const totalProjects = computed(() => {
+  return treeData.value.length
+})
+
+// 分页后的树形数据
+const paginatedTreeData = computed(() => {
+  const start = (pagination.currentPage - 1) * pagination.pageSize
+  const end = start + pagination.pageSize
+  return treeData.value.slice(start, end)
 })
 
 /**
@@ -734,6 +766,21 @@ const handleRequirementPriorityFilter = async () => {
     await nextTick()
     expandAll()
   }
+}
+
+/**
+ * 分页大小改变处理
+ */
+const handleSizeChange = (newSize: number) => {
+  pagination.pageSize = newSize
+  pagination.currentPage = 1 // 重置到第一页
+}
+
+/**
+ * 分页页码改变处理
+ */
+const handlePageChange = (newPage: number) => {
+  pagination.currentPage = newPage
 }
 
 /**
@@ -1395,6 +1442,12 @@ onMounted(async () => {
   font-size: 12px;
   color: #909399;
   margin-top: 4px;
+}
+
+.pagination-container {
+  display: flex;
+  justify-content: center;
+  margin-top: 20px;
 }
 
 /* 树形表格样式优化 */
