@@ -1,2 +1,0 @@
-# 每天凌晨2点自动备份数据库
-0 2 * * * cd /app && /app/scripts/backup.sh >> /app/backups/backup.log 2>&1

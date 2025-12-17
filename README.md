@@ -99,22 +99,7 @@ docker-compose exec backend npx prisma db seed
 
 ## 数据备份与恢复
 
-系统集成了自动数据库备份功能，每天凌晨2点自动备份，保留最近30天的备份数据。
-
-### 自动备份
-
-备份服务已集成在 docker-compose.yml 中，启动服务后会自动运行：
-
-```bash
-# 备份文件存储位置
-./backups/
-
-# 查看备份日志
-docker logs pm_backup
-
-# 查看备份文件列表
-ls -lh backups/
-```
+提供简单易用的数据库备份和恢复功能，支持手动备份和自动定时备份。
 
 ### 手动备份
 
@@ -127,6 +112,21 @@ bash scripts/backup.sh
 
 # 备份文件将保存在 ./backups/ 目录
 # 格式：backup_YYYYMMDD_HHMMSS.sql.gz
+```
+
+### 自动定时备份（可选）
+
+设置每7天自动备份一次（每周日凌晨2点）：
+
+```bash
+# 设置定时任务（仅需执行一次）
+bash scripts/setup-backup-cron.sh
+
+# 查看定时任务
+crontab -l
+
+# 查看备份日志
+cat backups/backup.log
 ```
 
 ### 恢复数据库
@@ -144,8 +144,9 @@ docker-compose restart backend
 
 ### 备份策略
 
-- **自动备份时间**：每天凌晨 2:00
-- **备份保留期**：30天
+- **手动备份**：随时执行 `bash scripts/backup.sh`
+- **自动备份**：每7天一次（可选，需运行设置脚本）
+- **备份保留期**：30天（自动清理）
 - **备份格式**：压缩的 SQL 文件（.sql.gz）
 - **存储位置**：./backups/ 目录
 
@@ -197,7 +198,7 @@ project-management-platform/
 ├── scripts/           # 备份脚本
 │   ├── backup.sh     # 数据库备份脚本
 │   ├── restore.sh    # 数据库恢复脚本
-│   └── crontab       # 定时任务配置
+│   └── setup-backup-cron.sh  # 设置定时备份
 ├── backups/          # 备份文件存储（自动创建）
 ├── docker-compose.yml # Docker编排配置
 └── README.md         # 本文件
@@ -230,9 +231,9 @@ project-management-platform/
 ### v1.1.0 (2025-01-17)
 
 - ✅ 项目名称重名校验（创建和更新时）
-- ✅ 自动数据库备份功能（每日凌晨2点）
-- ✅ 手动备份和恢复脚本
-- ✅ 备份数据保留策略（30天）
+- ✅ 数据库备份和恢复功能
+- ✅ 支持手动备份和自动定时备份（每7天）
+- ✅ 备份数据保留策略（30天自动清理）
 - ✅ 支持数据迁移
 
 ### v1.0.0 (2025-01-01)

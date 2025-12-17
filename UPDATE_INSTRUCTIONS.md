@@ -40,11 +40,10 @@ git pull origin master
 
 你应该看到以下文件更新：
 - `backend/src/routes/projects.ts` - 项目重名校验
-- `docker-compose.yml` - 新增备份服务
-- `scripts/backup.sh` - 备份脚本
+- `docker-compose.yml` - 移除备份容器（改用宿主机脚本）
+- `scripts/backup.sh` - 备份脚本（改进版）
 - `scripts/restore.sh` - 恢复脚本
-- `scripts/Dockerfile.backup` - 备份服务镜像
-- `scripts/crontab` - 定时任务配置
+- `scripts/setup-backup-cron.sh` - 设置定时备份
 - `README.md` - 更新说明
 - `BACKUP_GUIDE.md` - 备份指南
 
@@ -73,14 +72,10 @@ docker-compose up -d
 # 检查所有容器是否正常运行
 docker-compose ps
 
-# 你应该看到4个容器都是 Up 状态：
+# 你应该看到3个容器都是 Up 状态：
 # - pm_postgres  (数据库)
 # - pm_backend   (后端)
 # - pm_frontend  (前端)
-# - pm_backup    (新增的备份服务)
-
-# 查看备份服务日志
-docker logs pm_backup
 
 # 检查后端日志
 docker logs pm_backend
@@ -109,28 +104,25 @@ ls -lh backups/
 
 ## 备份功能说明
 
-### 自动备份
-- **备份时间**：每天凌晨2点
-- **备份位置**：`./backups/` 目录
-- **备份格式**：`backup_YYYYMMDD_HHMMSS.sql.gz`
-- **保留期限**：30天（自动删除旧备份）
-
-### 查看备份
-```bash
-# 查看所有备份文件
-ls -lh backups/
-
-# 查看备份服务日志
-docker logs pm_backup
-
-# 实时查看备份日志
-docker logs -f pm_backup
-```
-
 ### 手动备份
 ```bash
 # 随时执行手动备份
 bash scripts/backup.sh
+
+# 查看备份文件
+ls -lh backups/
+```
+
+### 设置自动定时备份（可选）
+```bash
+# 设置每7天自动备份（每周日凌晨2点）
+bash scripts/setup-backup-cron.sh
+
+# 查看定时任务
+crontab -l
+
+# 查看备份日志
+cat backups/backup.log
 ```
 
 ### 从备份恢复
@@ -145,13 +137,22 @@ bash scripts/restore.sh backups/backup_20250117_020000.sql.gz
 docker-compose restart backend
 ```
 
+### 备份策略
+- **手动备份**：随时执行 `bash scripts/backup.sh`
+- **自动备份**：每7天一次（可选，需运行设置脚本）
+- **备份保留期**：30天（自动清理）
+- **备份格式**：压缩的 SQL 文件（.sql.gz）
+- **存储位置**：./backups/ 目录
+
 ## 存储空间建议
 
 备份文件会占用一定的磁盘空间：
 
-- **小型项目** (< 1000条记录)：每个备份约 < 1MB，30天约占用 30MB
-- **中型项目** (1000-10000条记录)：每个备份约 1-10MB，30天约占用 300MB
-- **大型项目** (> 10000条记录)：每个备份约 > 10MB，30天约占用 > 300MB
+- **小型项目** (< 1000条记录)：每个备份约 < 1MB
+- **中型项目** (1000-10000条记录)：每个备份约 1-10MB
+- **大型项目** (> 10000条记录)：每个备份约 > 10MB
+
+如果使用自动备份（每7天），30天内约保留 5 个备份文件。
 
 建议定期检查磁盘空间：
 
@@ -165,32 +166,31 @@ du -sh backups/
 
 ## 故障排查
 
-### 问题1：备份容器无法启动
+### 问题1：备份失败
 
 ```bash
-# 查看错误日志
-docker logs pm_backup
+# 检查数据库容器是否运行
+docker ps | grep pm_postgres
 
-# 常见原因：
-# - Docker socket 挂载权限问题
-# - crontab 文件格式问题（需要 Unix 格式）
-
-# 解决方案：重新构建
-docker-compose build backup
-docker-compose up -d backup
-```
-
-### 问题2：备份文件未生成
-
-```bash
-# 检查备份服务是否运行
-docker ps | grep pm_backup
-
-# 检查 cron 是否运行
-docker exec pm_backup ps aux | grep crond
+# 检查备份脚本权限
+ls -l scripts/backup.sh
 
 # 手动执行备份测试
-docker exec pm_backup /app/scripts/backup.sh
+bash scripts/backup.sh
+```
+
+### 问题2：定时备份未执行
+
+```bash
+# 检查 crontab 是否设置
+crontab -l | grep backup
+
+# 检查 cron 服务是否运行
+systemctl status cron  # Ubuntu/Debian
+systemctl status crond # CentOS/RHEL
+
+# 查看备份日志
+cat backups/backup.log
 ```
 
 ### 问题3：项目重名校验不生效
